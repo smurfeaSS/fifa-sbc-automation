@@ -1,0 +1,87 @@
+name = "fc27-sbc"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# ─── The Access bypass, closed ────────────────────────────────────────────────
+# Cloudflare Access protects a *route on your domain*. It does NOT protect the
+# free `<worker>.<subdomain>.workers.dev` hostname every Worker gets by default.
+# Leaving that enabled means anyone who discovers the URL reaches your club data
+# with no login at all.
+#
+# This disables it. The Worker is then reachable only through the custom domain
+# below, which sits behind Access. The JWT check in src/middleware/access.ts is
+# the second layer — both matter, because a misconfigured Access policy would
+# otherwise be the only thing standing in the way.
+workers_dev = false
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "single-page-application"
+
+[vars]
+APP_NAME = "fc27-sbc"
+APP_ENV = "development"
+LOG_LEVEL = "info"
+# The single address allowed in. Enforced in the Worker as well as in the Access
+# policy, so a policy edit alone cannot open this up.
+ALLOWED_EMAIL = "mariosxen7@icloud.com"
+# Your Zero Trust team domain, e.g. "yourteam" for yourteam.cloudflareaccess.com
+ACCESS_TEAM_DOMAIN = "REPLACE_WITH_YOUR_TEAM_NAME"
+# The Access application's AUD tag (Zero Trust > Access > Applications > Overview)
+ACCESS_AUD = "REPLACE_WITH_YOUR_ACCESS_AUD_TAG"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fc27-sbc-db"
+database_id = "REPLACE_WITH_YOUR_D1_ID"          # run: npm run db:create
+migrations_dir = "migrations"
+
+# Caches the Access public keys (JWKS). Without this every request would fetch
+# them, which burns a subrequest and adds latency to every page load.
+[[kv_namespaces]]
+binding = "CACHE"
+id = "REPLACE_WITH_YOUR_KV_ID"                   # run: npm run kv:create
+preview_id = "REPLACE_WITH_YOUR_KV_PREVIEW_ID"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[dev]
+port = 8787
+local_protocol = "http"
+
+# ─── PRODUCTION ───────────────────────────────────────────────────────────────
+[env.production]
+name = "fc27-sbc-production"
+workers_dev = false
+
+# Access protects this hostname. Set up the Access application against exactly
+# this route — see edge/ACCESS-SETUP.md.
+routes = [
+  { pattern = "sbc.REPLACE_WITH_YOUR_DOMAIN.com", custom_domain = true }
+]
+
+[env.production.vars]
+APP_ENV = "production"
+LOG_LEVEL = "warn"
+ALLOWED_EMAIL = "mariosxen7@icloud.com"
+ACCESS_TEAM_DOMAIN = "REPLACE_WITH_YOUR_TEAM_NAME"
+ACCESS_AUD = "REPLACE_WITH_YOUR_ACCESS_AUD_TAG"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "fc27-sbc-db"
+database_id = "REPLACE_WITH_YOUR_D1_ID"
+migrations_dir = "migrations"
+
+[[env.production.kv_namespaces]]
+binding = "CACHE"
+id = "REPLACE_WITH_YOUR_KV_ID"
+
+[env.production.observability]
+enabled = true
+head_sampling_rate = 1
