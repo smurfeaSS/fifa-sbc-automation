@@ -238,6 +238,32 @@ so it is worth confirming rather than assuming.
 
 ---
 
+## Pulling updates after you have filled in the config
+
+The committed `wrangler.toml` holds placeholders, and yours holds real ids, so
+a `git pull` that touches it will stop rather than overwrite your values:
+
+```
+error: Your local changes to the following files would be overwritten by merge
+```
+
+Take the incoming version and refill it — faster and less error-prone than
+merging by hand, and `npm run setup` is idempotent, so it finds the existing
+resources rather than creating new ones:
+
+```bash
+cd edge && git checkout wrangler.toml
+cd .. && git pull
+cd edge && npm run setup -- --account <your-account-id>
+```
+
+Anything you set by hand — the domain, team name, AUD tag — needs putting back
+after, or pass them as flags:
+
+```bash
+npm run setup -- --account <id> --domain sbc.yourdomain.com --team yourteam --aud <aud-tag>
+```
+
 ## Everyday commands
 
 ```bash
