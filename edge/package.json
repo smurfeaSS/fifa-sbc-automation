@@ -2,7 +2,7 @@
   "name": "fc27-sbc-edge",
   "version": "1.0.0",
   "private": true,
-  "description": "FC 27 Smart SBC Assistant — Cloudflare Workers edition, behind Cloudflare Access",
+  "description": "FC 27 Smart SBC Assistant \u2014 Cloudflare Workers edition, behind Cloudflare Access",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --env production",
@@ -18,7 +18,8 @@
     "test:workers": "vitest run --config vitest.workers.config.ts",
     "kv:create:preview": "wrangler kv namespace create ACCESS_KEYS --preview",
     "setup": "node scripts/setup.mjs",
-    "setup:access": "node scripts/setup-access.mjs"
+    "setup:access": "node scripts/setup-access.mjs",
+    "update": "node scripts/update.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.36.4",

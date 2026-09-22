@@ -285,6 +285,22 @@ for (const [placeholder, value] of substitutions) {
 writeFileSync(CONFIG, toml)
 console.log(c.dim(`\n  wrote ${CONFIG} (backup at ${CONFIG}.backup)`))
 
+/**
+ * Remember what this run was given.
+ *
+ * The committed wrangler.toml holds placeholders and a working one holds real
+ * values, so every `git pull` that touches it stops rather than overwriting.
+ * Recovering means re-running this script with the same four arguments, and
+ * retyping an account id and an AUD tag from memory is how mistakes happen.
+ * `npm run update` replays this file.
+ */
+try {
+  const remembered = { account: accountId, domain, team, aud }
+  writeFileSync('.setup-args.json', JSON.stringify(remembered, null, 2))
+} catch {
+  /* Not fatal — it only costs you retyping the flags next time. */
+}
+
 // ─── what is left ────────────────────────────────────────────────────────────
 const remaining = [...toml.matchAll(/REPLACE_WITH_[A-Z_]+/g)].map((m) => m[0])
 const unique = [...new Set(remaining)]

@@ -240,6 +240,18 @@ so it is worth confirming rather than assuming.
 
 ## Pulling updates after you have filled in the config
 
+```bash
+cd edge && npm run update
+```
+
+Takes the incoming `wrangler.toml`, pulls, refills your ids from the values
+`npm run setup` recorded, and deploys. Secrets are untouched — they live on
+Cloudflare, not in the repo.
+
+Hard-refresh afterwards (**Ctrl+Shift+R**); the old CSS and JS are cached.
+
+The manual equivalent, and why it is needed at all:
+
 The committed `wrangler.toml` holds placeholders, and yours holds real ids, so
 a `git pull` that touches it will stop rather than overwrite your values:
 
