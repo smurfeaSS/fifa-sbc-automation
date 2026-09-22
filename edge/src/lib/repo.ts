@@ -9,18 +9,30 @@ import type { Bindings } from '../types'
 import type { AnnotatedPlayer, ValueSource } from '../shared/player'
 import type { PlayerRow } from './schema'
 
-/** Absolute cap on rows any single query may return (CLAUDE.md §17). */
-export const MAX_ROWS = 100
+/**
+ * Cap on rows any single query may return.
+ *
+ * CLAUDE.md §17 sets 100 for the free plan, where serialising more would eat
+ * the 10ms budget. On the paid plan the constraint is the browser rendering a
+ * long table, not the Worker, so this is raised to something that makes the
+ * club view usable while still bounding every response.
+ */
+export const MAX_ROWS = 500
 
 /**
  * Cheapest candidates to fetch per rating band.
  *
  * The solver only ever uses the cheapest few players at any given rating —
  * everything beyond that is dominated and can never appear in an optimal
- * squad. Twelve covers a full squad from one band plus headroom for the
- * constraint-repair pass to find same-rating swaps.
+ * squad. Twelve was the free-plan figure: enough for one squad plus headroom
+ * for same-rating repair swaps.
+ *
+ * On the paid plan this is raised to cover a whole SBC set at once. Five
+ * challenges can take 55 players, and the global allocator needs alternatives
+ * left over after each one commits its picks, or later squads get squeezed
+ * into buying. Sixty per rating covers that comfortably.
  */
-export const CANDIDATES_PER_RATING = 12
+export const CANDIDATES_PER_RATING = 60
 
 function parseJsonArray(value: string): string[] {
   try {

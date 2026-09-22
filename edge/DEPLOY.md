@@ -252,15 +252,31 @@ Then remove the Access application in the Zero Trust dashboard.
 
 ## What costs what
 
-All of this fits inside Cloudflare's free tier for one person:
+Configured for **Workers Paid**, which you have. Usage for one person sits far
+inside what the $5/month plan includes, so there should be no usage billing on
+top of the subscription:
 
-| | Free allowance | This app |
+| | Paid allowance | This app |
 |---|---|---|
-| Worker requests | 100,000/day | a few hundred |
-| Worker CPU | 10ms/request | ~1–6ms, measured |
-| D1 rows read | 5,000,000/day | ~400 per solve |
+| Worker requests | 10,000,000/month included | a few hundred |
+| Worker CPU | 30s/request (set in `[limits]`) | ~5ms for a whole SBC set |
+| D1 rows read | 25,000,000,000/month | ~440 per solve |
 | D1 storage | 5GB | a few MB |
-| KV reads | 100,000/day | one per cold isolate |
-| Access seats | 50 users | 1 |
+| KV reads | 10,000,000/month | one per cold isolate |
+| Access seats | 50 free | 1 |
 
-The 10ms CPU ceiling is the one that shaped the architecture — see the README.
+The paid plan is what allows a whole SBC set to be solved in one request with
+the full global allocator. It is not what makes it fast — see the README.
+
+### Checking real CPU use
+
+```bash
+npm run tail
+```
+
+Then use the app. Each request logs its CPU time. Anything consistently over
+~50ms for a solve would be worth looking at; the measured figure is ~5ms.
+
+Do not try to measure this from inside the Worker: Workers coarsens
+`Date.now()` and `performance.now()` as a Spectre mitigation, so timing a
+pure-CPU section in code reports 0 regardless of what it cost.

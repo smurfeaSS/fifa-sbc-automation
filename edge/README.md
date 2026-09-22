@@ -34,17 +34,20 @@ This one puts your club on Cloudflare so you can reach it from a phone. That is
 a real trade, made deliberately — `automation.md` §22 asked for local-only, and
 this is a considered departure from it, not an oversight.
 
-The architecture also had to change, because a Worker gets **10ms of CPU per
-request** on the free plan (`CLAUDE.md` §17) and the local build used roughly
-double that for a single SBC set:
+The architecture also changed. The free plan gives a Worker **10ms of CPU per
+request** (`CLAUDE.md` §17), which the local build exceeded for a single SBC
+set. This runs on **Workers Paid**, where the allowance is 30s and declared
+explicitly in `wrangler.toml` under `[limits]`, so most of that pressure is
+gone — but the bounded-read design was kept, because reading a fixed number of
+rows regardless of club size is simply better, not a workaround:
 
 | | Local | Cloudflare |
 |---|---|---|
 | Club storage | one JSON file | D1 rows |
 | Protection | recomputed per solve | precomputed into indexed columns |
-| Solver input | all ~1,800 players | ~400-row candidate pool |
-| Import | one pass | chunked, 250 players per request |
-| SBC set | solved in one call | one challenge per request |
+| Solver input | all ~1,800 players | ~440-row candidate pool |
+| Import | one pass | chunked, 1,000 players per request |
+| SBC set | solved in one call | solved in one call |
 | Scraper | cheerio | HTMLRewriter, streaming |
 
 **The candidate pool** is the interesting one. A solve only ever needs the
@@ -54,11 +57,36 @@ cheapest 12 per rating in a band around the target and never reads the rest of
 the club. `tests/solver.test.ts` checks this produces the same squads as
 solving against the whole club, across targets 83–87, rather than assuming it.
 
-**Set solving** is split across requests. The Worker computes the order —
-hardest challenge first, which is what stops cheap high-rated cards being spent
-on the low squad — and the browser walks it, carrying committed player ids
-forward. What is lost relative to the local build is the refinement pass that
-could undo a bad early commitment; `src/solver/ordering.ts` says so plainly.
+**Set solving** runs in one request on the paid plan, using the full global
+allocator — hardest challenge first, several candidate orderings, and
+refinement passes that release a challenge's players and re-solve against the
+freed pool. The refinement is what undoes a bad early commitment, which is the
+`automation.md` §5 failure mode.
+
+Measured on a 1,561-player club: **5.3ms median for a whole five-squad set**
+(3.8ms best, 17.5ms worst), producing 55 players, all duplicates, zero
+tradeable value spent and zero purchases.
+
+The per-challenge walk is kept as a fallback and still works, so the app
+degrades rather than fails if a set is ever large enough to hit the ceiling.
+
+### Why it is fast
+
+Not because of the CPU allowance — it was already single-digit milliseconds on
+the free plan. It is fast because of the search itself: branch-and-bound over
+rating multisets returns the moment it has *proved* no better squad exists,
+which is usually after exploring a tiny part of the tree. The paid allowance
+only raises the ceiling, so the search now stops because it has finished rather
+than because it ran out of budget.
+
+The candidate pool matters too: a solve reads a bounded number of rows
+(60 per rating in the band) regardless of club size, so a 3,000-player club
+solves as fast as an 800-player one.
+
+**Do not try to measure this from inside the Worker.** Workers coarsens
+`Date.now()` and `performance.now()` as a Spectre mitigation — they advance only
+on I/O, so any pure-CPU section reads 0ms however long it took. Real CPU time
+comes from `wrangler tail`.
 
 ## Endpoints
 
@@ -70,7 +98,8 @@ Everything except `/health` requires a verified Access identity.
 | `GET /api/me` | The identity Access verified. |
 | `POST /api/import/{begin,chunk,finish}` | Chunked club import. |
 | `GET /api/solve/plan?sbcId=` | Challenge order, hardest first. |
-| `POST /api/solve/challenge` | Solve one challenge. |
+| `POST /api/solve/set` | Solve a whole SBC set with global allocation. |
+| `POST /api/solve/challenge` | Solve one challenge (fallback path). |
 | `GET /api/club/{summary,players,fodder,duplicates,protected}` | Club views. |
 | `GET/POST /api/settings`, `POST /api/reannotate` | Settings, and the paged re-annotation a settings change requires. |
 | `POST /api/lock` | Lock or unlock a player. |

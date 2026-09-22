@@ -28,8 +28,19 @@ import type { AppEnv } from '../types'
 
 const app = new Hono<AppEnv>()
 
-/** Players per chunk. Kept low enough that annotate() stays well inside budget. */
-export const MAX_CHUNK = 250
+/**
+ * Players per chunk.
+ *
+ * 250 was sized for the free plan's 10ms CPU. With the paid allowance the
+ * limiting factor is D1 write throughput and request body size rather than CPU,
+ * so this is raised — a 1,800-player club now imports in two requests instead
+ * of eight.
+ *
+ * Still chunked rather than single-shot: it keeps each request's body modest,
+ * and it is what drives the progress bar during an import that takes a few
+ * seconds either way.
+ */
+export const MAX_CHUNK = 1000
 
 app.post('/begin', async (c) => {
   type BeginBody = { exportedAt?: string; gameVersion?: string }

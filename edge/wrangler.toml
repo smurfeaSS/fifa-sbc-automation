@@ -57,6 +57,17 @@ binding = "ACCESS_KEYS"
 id = "REPLACE_WITH_ACCESS_KEYS_ID"               # run: npm run kv:create
 preview_id = "REPLACE_WITH_ACCESS_KEYS_PREVIEW_ID"
 
+# ─── CPU allowance (Workers Paid) ────────────────────────────────────────────
+# The free plan caps CPU at 10ms per request, which is what originally forced
+# the club import and SBC solving to be split across many small requests. On the
+# paid plan the default is 30s; this states it rather than relying on the
+# default, so the budget the solver is tuned against is visible in one place.
+#
+# Wall-clock time waiting on D1, KV or fetch does NOT count against this — only
+# actual JS execution does.
+[limits]
+cpu_ms = 30000
+
 [observability]
 enabled = true
 head_sampling_rate = 1
@@ -101,6 +112,9 @@ migrations_dir = "migrations"
 [[env.production.kv_namespaces]]
 binding = "ACCESS_KEYS"
 id = "REPLACE_WITH_ACCESS_KEYS_ID"
+
+[env.production.limits]
+cpu_ms = 30000
 
 [env.production.observability]
 enabled = true

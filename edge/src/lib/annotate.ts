@@ -18,10 +18,13 @@ import type { Bindings } from '../types'
 import type { PlayerRow } from './schema'
 
 /**
- * Rows per pass. Protection is a handful of comparisons per player, so this is
- * comfortably inside budget while keeping the number of passes small.
+ * Rows per pass.
+ *
+ * Protection is a handful of comparisons per player. On the paid CPU allowance
+ * a whole ordinary club fits in one pass, so this is sized to make re-annotation
+ * a single round trip for most people while still paging a very large one.
  */
-export const ANNOTATE_PAGE = 400
+export const ANNOTATE_PAGE = 2500
 
 export interface AnnotatePage {
   updated: number
@@ -86,7 +89,7 @@ export async function reannotatePage(
  * import the club is at most a few thousand rows and the pages are batched, but
  * on a very large club prefer driving `reannotatePage` from the client.
  */
-export async function reannotateAll(env: Bindings, maxPages = 12): Promise<number> {
+export async function reannotateAll(env: Bindings, maxPages = 20): Promise<number> {
   let offset = 0
   let total = 0
   for (let page = 0; page < maxPages; page++) {

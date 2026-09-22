@@ -121,12 +121,30 @@ describe('candidate pool preserves solution quality', () => {
     })
   }
 
-  test('the pool is a small fraction of the club', () => {
-    const all = annotate(realisticClub(), settings)
-    const pool = toCandidatePool(all, 84)
-    // The point of the exercise: a few hundred rows, not eighteen hundred.
-    expect(pool.length).toBeLessThan(all.length / 3)
-    expect(pool.length).toBeGreaterThan(11)
+  test('the pool size is bounded by the band, not by how big the club is', () => {
+    // The property that actually matters. A fraction-of-club assertion would
+    // need recalibrating every time either the club or CANDIDATES_PER_RATING
+    // moves, and would still not say the useful thing: that a reader of this
+    // pool does constant work however large the club grows.
+    const small = annotate(realisticClub(), settings)
+    const large = annotate([...realisticClub(), ...realisticClub().map((p, i) => ({
+      ...p, id: `dup${i}`, assetId: `dupasset${i}`,
+    }))], settings)
+
+    const smallPool = toCandidatePool(small, 84)
+    const largePool = toCandidatePool(large, 84)
+
+    expect(large.length).toBeGreaterThan(small.length * 1.9)
+
+    // Doubling the club barely moves the pool: it only grows where a rating
+    // had not yet reached the per-rating cap. Once saturated it stops entirely.
+    expect(largePool.length).toBeLessThan(smallPool.length * 1.25)
+
+    // The hard ceiling, independent of club size: per-rating cap times the
+    // number of ratings in the band. This is what makes a solve constant work.
+    const ratingsInBand = 10 + 4 + 1
+    expect(largePool.length).toBeLessThanOrEqual(CANDIDATES_PER_RATING * ratingsInBand)
+    expect(largePool.length).toBeGreaterThan(11)
   })
 })
 
