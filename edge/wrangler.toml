@@ -33,17 +33,18 @@ run_worker_first = true
 [vars]
 APP_ENV = "development"
 LOG_LEVEL = "info"
-# The single address allowed in, enforced in the Worker as well as in the Access
-# policy, so a policy edit alone cannot open this up.
+# ALLOWED_EMAIL is deliberately NOT declared here.
 #
-# Set as a SECRET, not here — this file is in version control, and a personal
-# address does not belong in it:
+# Secrets and plain-text vars share one namespace, and `wrangler deploy` uploads
+# whatever vars this file declares — so a var of the same name OVERWRITES the
+# secret on every single deploy. Declaring it here with a placeholder would mean
+# the allowlist silently reverted to nothing each time you shipped.
+#
+# It exists only as a secret:
 #     npx wrangler secret put ALLOWED_EMAIL --env production
 #
-# Workers resolve secrets and vars through the same env binding, and a secret of
-# the same name wins, so no code changes. The placeholder below is treated as
-# unconfigured and makes the Worker refuse every request until the secret is set.
-ALLOWED_EMAIL = "REPLACE_WITH_YOUR_EMAIL"
+# Until that is set the Worker refuses every request and says so in
+# `wrangler tail`, which is the correct way for an unset allowlist to behave.
 # Your Zero Trust team domain, e.g. "yourteam" for yourteam.cloudflareaccess.com
 ACCESS_TEAM_DOMAIN = "REPLACE_WITH_YOUR_TEAM_NAME"
 # The Access application's AUD tag (Zero Trust > Access > Applications > Overview)
@@ -111,7 +112,6 @@ run_worker_first = true
 [env.production.vars]
 APP_ENV = "production"
 LOG_LEVEL = "warn"
-ALLOWED_EMAIL = "REPLACE_WITH_YOUR_EMAIL"
 ACCESS_TEAM_DOMAIN = "REPLACE_WITH_YOUR_TEAM_NAME"
 ACCESS_AUD = "REPLACE_WITH_YOUR_ACCESS_AUD_TAG"
 
