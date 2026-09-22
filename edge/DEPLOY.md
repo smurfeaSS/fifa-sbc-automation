@@ -39,7 +39,30 @@ Confirm you are on the right account before creating anything:
 npx wrangler whoami
 ```
 
-## 1. Create the D1 database
+## 1. Create everything in one command
+
+```bash
+npm run setup
+```
+
+This creates the D1 database and both KV namespaces, then writes all five ids
+into `wrangler.toml` — including the second copy of each under
+`[env.production]`, which env blocks do not inherit and which is the usual
+reason a first deploy comes up with no database. It backs the file up first and
+is safe to re-run; existing resources are reused rather than duplicated.
+
+You can pass what you already know:
+
+```bash
+npm run setup -- --domain sbc.yourdomain.com --team yourteam
+```
+
+It prints anything still left to fill in. The Access AUD tag is deliberately
+last — you only get it after creating the Access application in step 6.
+
+The manual equivalent is below, if you would rather do it by hand.
+
+## 1a. Create the D1 database (manual)
 
 ```bash
 npm run db:create
