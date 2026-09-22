@@ -761,5 +761,31 @@ async function loadIdentity() {
   }
 }
 
+// ── Theme ────────────────────────────────────────────────────────────────────
+/**
+ * Light is the default; dark is opt-in and remembered per browser.
+ *
+ * localStorage can throw in private mode, so every access is guarded — a
+ * browser that refuses to remember the choice should still render, just in the
+ * default theme.
+ */
+function applyTheme(theme) {
+  if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  else document.documentElement.removeAttribute('data-theme');
+  $('#theme-toggle').textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+  try { localStorage.setItem('theme', theme); } catch { /* not fatal */ }
+}
+
+$('#theme-toggle').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+});
+
+(() => {
+  let saved = null;
+  try { saved = localStorage.getItem('theme'); } catch { /* not fatal */ }
+  applyTheme(saved === 'dark' ? 'dark' : 'light');
+})();
+
 loadIdentity();
 loaders.dashboard();

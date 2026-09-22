@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FC 27 Smart SBC Assistant</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%2358a6ff'/%3E%3Ctext x='8' y='12' font-size='10' font-family='sans-serif' font-weight='bold' text-anchor='middle' fill='%230d1117'%3ES%3C/text%3E%3C/svg%3E">
+<script>
+  // Inline and before the stylesheet on purpose: applying the saved theme after
+  // first paint shows a flash of the wrong one.
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  } catch (e) { /* private mode — light is the default anyway */ }
+</script>
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/cards.css">
 </head>
@@ -21,6 +29,7 @@
     <button data-view="history">SBC History</button>
     <button data-view="prices">Market Prices</button>
     <button data-view="settings">Settings</button>
+    <button class="theme" id="theme-toggle">Dark mode</button>
     <div class="identity">Signed in via Cloudflare Access<strong id="who">…</strong></div>
     <p class="note">
       Nothing is ever submitted for you. Squads are proposals — you build and

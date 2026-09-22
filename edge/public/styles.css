@@ -1,8 +1,34 @@
 :root {
-  --bg: #0d1117; --panel: #161b22; --panel-2: #1c2430; --line: #30363d;
-  --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
-  --safe: #3fb950; --caution: #d29922; --danger: #f85149; --info: #a371f7;
+  /* Light is the default. Dark is opt-in via the toggle, which sets
+     data-theme="dark" on <html> and persists the choice. */
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --panel-2: #eef1f5;
+  --line: #d8dee5;
+  --text: #1c2128;
+  --muted: #5b6672;
+  --accent: #0b6bcb;
+  --safe: #1a7f37;
+  --caution: #9a6700;
+  --danger: #cf222e;
+  --info: #7c3aed;
+  --shadow: 0 1px 2px rgba(16, 22, 26, .06), 0 1px 3px rgba(16, 22, 26, .08);
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel-2: #1c2430;
+  --line: #30363d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --safe: #3fb950;
+  --caution: #d29922;
+  --danger: #f85149;
+  --info: #a371f7;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3);
 }
 * { box-sizing: border-box; }
 body {
@@ -32,7 +58,8 @@ h2 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
 /* Tiles inside a panel have less room, so allow six across rather than
    orphaning one onto its own row. */
 .panel .tiles { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); margin-bottom: 16px; }
-.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+        padding: 14px 16px; box-shadow: var(--shadow); }
 .tile .label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .tile .value { font-size: 24px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .tile .value.small { font-size: 18px; }
@@ -40,23 +67,22 @@ h2 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { text-align: left; font-weight: 500; color: var(--muted); font-size: 11px; text-transform: uppercase;
      letter-spacing: .04em; padding: 8px 10px; border-bottom: 1px solid var(--line); }
-td { padding: 7px 10px; border-bottom: 1px solid #21262d; font-variant-numeric: tabular-nums; }
-tr:hover td { background: var(--panel); }
+td { padding: 7px 10px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+tr:hover td { background: var(--panel-2); }
 td.num, th.num { text-align: right; }
 /* Rating is always the first column and always short. */
 td:first-child.num, th:first-child.num { width: 62px; }
 
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; margin-bottom: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+         padding: 16px 18px; margin-bottom: 16px; box-shadow: var(--shadow); }
 .panel h3 { margin: 0 0 12px; font-size: 15px; }
 
 .status { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px;
           font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-.status.safe { background: rgba(63,185,80,.15); color: var(--safe); }
-.status.ready { background: rgba(63,185,80,.15); color: var(--safe); }
-.status.caution { background: rgba(210,153,34,.15); color: var(--caution); }
-.status.expensive { background: rgba(210,153,34,.2); color: var(--caution); }
-.status.danger { background: rgba(248,81,73,.15); color: var(--danger); }
-.status.info { background: rgba(163,113,247,.15); color: var(--info); }
+.status.safe, .status.ready { background: rgba(26,127,55,.12); color: var(--safe); }
+.status.caution, .status.expensive { background: rgba(154,103,0,.14); color: var(--caution); }
+.status.danger { background: rgba(207,34,46,.12); color: var(--danger); }
+.status.info { background: rgba(124,58,237,.12); color: var(--info); }
 
 .warn { border-left: 3px solid var(--caution); background: var(--panel-2); padding: 10px 14px;
         margin: 8px 0; border-radius: 0 4px 4px 0; }
@@ -68,9 +94,10 @@ td:first-child.num, th:first-child.num { width: 62px; }
 .warn .detail { color: var(--muted); font-size: 12px; }
 
 button.action {
-  background: var(--accent); color: #05101f; border: 0; border-radius: 5px;
+  background: var(--accent); color: #fff; border: 0; border-radius: 5px;
   padding: 8px 16px; font: inherit; font-weight: 600; cursor: pointer;
 }
+:root[data-theme="dark"] button.action { color: #05101f; }
 button.action:hover { filter: brightness(1.1); }
 button.action:disabled { opacity: .5; cursor: default; }
 button.ghost { background: none; border: 1px solid var(--line); color: var(--text);
@@ -96,7 +123,7 @@ label.field input[type=number], label.field select { width: 150px; }
 .drop { border: 2px dashed var(--line); border-radius: 8px; padding: 36px; text-align: center; color: var(--muted); }
 .drop.over { border-color: var(--accent); color: var(--text); }
 .empty { padding: 40px; text-align: center; color: var(--muted); }
-.banner { background: rgba(210,153,34,.1); border: 1px solid rgba(210,153,34,.3);
+.banner { background: rgba(154,103,0,.09); border: 1px solid rgba(154,103,0,.28);
           border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; font-size: 13px; }
 
 /* ─── Edge-only additions ─────────────────────────────────────────────────── */
@@ -106,3 +133,12 @@ label.field input[type=number], label.field select { width: 150px; }
             border: 1px solid var(--line); border-radius: 5px; font-size: 11px; color: var(--muted); }
 .identity strong { display: block; color: var(--text); font-weight: 500; word-break: break-all; }
 .step { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+/* ─── Theme toggle ────────────────────────────────────────────────────────── */
+nav .theme {
+  margin: 14px 16px 0; width: calc(100% - 32px);
+  background: none; border: 1px solid var(--line); border-radius: 5px;
+  color: var(--muted); font: inherit; font-size: 12px; padding: 6px 10px;
+  cursor: pointer; text-align: center;
+}
+nav .theme:hover { color: var(--text); border-color: var(--accent); }

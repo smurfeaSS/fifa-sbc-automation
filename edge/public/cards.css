@@ -20,12 +20,12 @@
   font-family: ui-sans-serif, system-ui, sans-serif;
   color: #2b2410;
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, .35);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+  border: 1px solid rgba(0, 0, 0, .28);
+  box-shadow: 0 1px 4px rgba(16, 22, 26, .18);
   cursor: default;
   transition: transform .12s ease, box-shadow .12s ease;
 }
-.fut-card:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0, 0, 0, .45); }
+.fut-card:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(16, 22, 26, .28); }
 
 /* Rating + position block, top left, as in game. */
 .fut-card .rating { font-size: 26px; font-weight: 800; line-height: .95; letter-spacing: -.02em; }
@@ -109,9 +109,13 @@
 
 /* A card the solver says you need to buy: outlined, not filled. */
 .fut-card.wanted {
+  background: repeating-linear-gradient(135deg, #eceef5 0 8px, #e3e6ef 8px 16px);
+  color: #4a5262;
+  border: 1px dashed #7c3aed;
+}
+:root[data-theme="dark"] .fut-card.wanted {
   background: repeating-linear-gradient(135deg, #1c2333 0 8px, #171d2a 8px 16px);
   color: #cbd5e1;
-  border: 1px dashed #7c3aed;
 }
 .fut-card.wanted .name { border-top-color: rgba(255, 255, 255, .2); }
 .fut-card.wanted .rating { opacity: .9; }
