@@ -150,3 +150,47 @@ export const history = sqliteTable(
 
 export type PlayerRow = typeof players.$inferSelect
 export type NewPlayerRow = typeof players.$inferInsert
+
+/**
+ * Market prices, keyed by the thing you would actually search for.
+ *
+ * Deliberately not per-player-instance: when the solver says "you need an 86",
+ * any 86 will do, so what matters is the cheapest price at a given rating and
+ * quality — which is exactly what a price list gives you.
+ *
+ * `assetId` is set only for rows describing one specific footballer, which
+ * lets a pasted list name real players rather than just quote a band.
+ */
+export const prices = sqliteTable(
+  'prices',
+  {
+    id: text('id').primaryKey(),
+    /** Present when this row is one named player rather than a rating band. */
+    assetId: text('asset_id'),
+    name: text('name'),
+    rating: integer('rating').notNull(),
+    /** 'gold' | 'silver' | 'bronze'. */
+    quality: text('quality').notNull().default('gold'),
+    /** 'rare' | 'common' | a special type. */
+    rarity: text('rarity').notNull().default('rare'),
+    position: text('position'),
+    nationId: integer('nation_id'),
+    nationName: text('nation_name'),
+    leagueId: integer('league_id'),
+    leagueName: text('league_name'),
+    clubId: integer('club_id'),
+    clubName: text('club_name'),
+    /** Lowest BIN seen, in coins. */
+    priceCoins: integer('price_coins').notNull(),
+    /** Where the figure came from, for honesty in the UI. */
+    source: text('source').notNull().default('manual'),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (t) => ({
+    // The query the solver runs: cheapest at a rating, optionally filtered.
+    lookupIdx: index('prices_lookup_idx').on(t.rating, t.priceCoins),
+    assetIdx: index('prices_asset_idx').on(t.assetId),
+  }),
+)
+
+export type PriceRow = typeof prices.$inferSelect

@@ -88,6 +88,45 @@ solves as fast as an 800-player one.
 on I/O, so any pure-CPU section reads 0ms however long it took. Real CPU time
 comes from `wrangler tail`.
 
+## Player cards
+
+Squads render as FUT-style cards — rating and position top left, name across
+the bottom, club / league / nation beneath, and a treatment per card type
+(bronze, silver, gold, gold rare, TOTW, Icon, Hero, promo, Evolution). Corner
+markers show what the solver cares about: a red LOCK on a protected card, a
+blue count on a duplicate, UT on an untradeable, and a purple BUY on an
+outlined card the club cannot supply.
+
+The cards are **drawn in CSS, not copied**. EA's card artwork and player images
+are theirs, so nothing here ships their assets. The table of reasoning sits
+under a disclosure below each squad, since a card has no room for "why this
+one".
+
+## Market prices and buying
+
+The tool does **not** query the live transfer market, and this is deliberate
+rather than unfinished. Searching listings by criteria in a loop is the sniping
+pattern, it is the riskiest possible interaction with EA's servers, and
+`automation.md` §23 rules it out explicitly. FUTBIN has no public API and sits
+behind bot protection, so scraping prices from it is not reliable either.
+
+Instead, the **Market Prices** page takes a pasted or uploaded price list —
+rows copied off a price site, or a spreadsheet export. The parser is forgiving
+about shape (commas, tabs, aligned columns, `1,250,000`, `1.4m`, `12k`, with or
+without a name) and reports any line it cannot read **with its line number**,
+because a price list that quietly lost half its rows would make the solver
+confidently wrong about what things cost.
+
+When an SBC needs a card you do not own, the suggestion gives:
+
+- the **cheapest real cards** at that rating, if a price list has been imported
+- the **exact transfer-search filters** either way — quality, rarity, rating,
+  any nation or league the SBC forces, and a Max Buy Now figure
+
+§15 is explicit that a generic requirement beats naming a specific footballer
+you then have to hunt for. The filter list is what turns "you need an 86" into
+a ten-second search.
+
 ## Endpoints
 
 Everything except `/health` requires a verified Access identity.
@@ -106,6 +145,7 @@ Everything except `/health` requires a verified Access identity.
 | `GET/POST /api/sbcs`, `POST /api/parse-sbc` | SBC definitions. |
 | `POST /api/scrape/{index,page}` | Refresh SBCs from the configured site. |
 | `GET/POST /api/history` | Submission history. |
+| `GET/POST/DELETE /api/prices` | Market price list. |
 
 Every response is bounded to 100 rows, per `CLAUDE.md` §17.
 

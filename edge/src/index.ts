@@ -25,6 +25,7 @@ import solveRoutes from './routes/solve'
 import clubRoutes from './routes/club'
 import manageRoutes from './routes/manage'
 import scrapeRoutes from './routes/scrape'
+import priceRoutes from './routes/prices'
 
 const app = new Hono<AppEnv>()
 
@@ -48,6 +49,7 @@ app.route('/api/import', importRoutes)
 app.route('/api/solve', solveRoutes)
 app.route('/api/club', clubRoutes)
 app.route('/api/scrape', scrapeRoutes)
+app.route('/api/prices', priceRoutes)
 app.route('/api', manageRoutes)
 
 // Static UI, also behind Access.

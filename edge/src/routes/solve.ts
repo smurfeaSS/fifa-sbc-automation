@@ -27,6 +27,7 @@ import { buildPreview } from '../solver/preview'
 import { requiredRating } from '../solver/requirements'
 import { solveOrder, poolStats, type PoolStats } from '../solver/ordering'
 import { solveSbcSet } from '../solver/globalAllocator'
+import { suggestPurchases } from '../lib/purchases'
 import type { AppEnv } from '../types'
 import type { SbcSet, Challenge } from '../shared/sbc'
 
@@ -181,6 +182,9 @@ app.post('/challenge', async (c) => {
   }
 
   const preview = buildPreview(result.squad, settings, target)
+  const purchases = result.squad.missing.length > 0
+    ? await suggestPurchases(c.env, result.squad.missing, challenge.requirements)
+    : []
 
   return c.json({
     success: true,
@@ -188,6 +192,7 @@ app.post('/challenge', async (c) => {
       challenge: { id: challenge.id, name: challenge.name },
       solved: true,
       preview,
+      purchases,
       // The client adds these to committedIds before solving the next one.
       usedIds: result.squad.players.map((p) => p.id),
     },
@@ -253,14 +258,20 @@ app.post('/set', async (c) => {
       totals: solution.totals,
       completable: solution.completable,
       unsolved: solution.unsolved,
-      challenges: solution.challenges.map((allocated) => ({
+      challenges: await Promise.all(solution.challenges.map(async (allocated) => ({
         challenge: { id: allocated.challenge.id, name: allocated.challenge.name },
         solved: Boolean(allocated.squad),
         message: allocated.failure?.message ?? null,
         preview: allocated.squad
           ? buildPreview(allocated.squad, settings, requiredRating(allocated.challenge.requirements))
           : null,
-      })),
+        // Named cheapest cards where a price list exists, and the exact
+        // transfer-search filters either way — "an 86" is not actionable, an
+        // 86 with a rarity, a nation and a max-buy-now figure is.
+        purchases: allocated.squad && allocated.squad.missing.length > 0
+          ? await suggestPurchases(c.env, allocated.squad.missing, allocated.challenge.requirements)
+          : [],
+      }))),
       /**
        * How much of the club the search had to look at.
        *

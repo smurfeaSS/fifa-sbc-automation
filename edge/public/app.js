@@ -404,17 +404,27 @@ function renderSolution(set, results, searched) {
         tileOf('Duplicates', s.duplicatesUsed),
       ),
 
-      table(
-        [{ label: 'Rating', num: true }, 'Name', { label: 'Value', num: true }, 'Why this card'],
-        p.players.map((row) => el('tr', {},
-          el('td', { class: 'num' }, row.player.rating),
-          el('td', {}, row.player.name,
-            row.player.isProtected
-              ? el('span', { class: 'pill prot', style: 'margin-left:6px' }, 'protected') : null),
-          el('td', { class: 'num' }, n(row.value)),
-          el('td', { class: 'muted' }, row.rationale),
-        )),
+      // The squad as cards, the way the game shows it. The table underneath
+      // carries the reasoning, which a card has no room for.
+      squadCards(p.players, p.missing ?? []),
+
+      el('details', {},
+        el('summary', { class: 'muted', style: 'cursor:pointer;font-size:12px' },
+          'Why these cards'),
+        table(
+          [{ label: 'Rating', num: true }, 'Name', { label: 'Value', num: true }, 'Why this card'],
+          p.players.map((row) => el('tr', {},
+            el('td', { class: 'num' }, row.player.rating),
+            el('td', {}, row.player.name,
+              row.player.isProtected
+                ? el('span', { class: 'pill prot', style: 'margin-left:6px' }, 'protected') : null),
+            el('td', { class: 'num' }, n(row.value)),
+            el('td', { class: 'muted' }, row.rationale),
+          )),
+        ),
       ),
+
+      ...(r.purchases && r.purchases.length > 0 ? [purchasePanel(r.purchases)] : []),
 
       ...p.warnings.map((w) => el('div', { class: `warn ${w.severity}` },
         el('div', { class: 'msg' }, w.message),
@@ -434,6 +444,60 @@ function renderSolution(set, results, searched) {
   }
 
   out.replaceChildren(...blocks);
+}
+
+/**
+ * What to buy, and how to find it.
+ *
+ * Named cards when a price list has been imported; otherwise the exact
+ * transfer-search filters, which is what turns "you need an 86" into a
+ * ten-second search rather than a hunt.
+ */
+function purchasePanel(purchases) {
+  const blocks = purchases.map((p) => {
+    const f = p.filters;
+    const filterRows = [
+      ['Quality', f.quality],
+      ['Rarity', f.rarity],
+      ['Rating', f.minRating === f.maxRating ? f.minRating : `${f.minRating}–${f.maxRating}`],
+      f.position ? ['Position', f.position] : null,
+      f.nation ? ['Nation', f.nation] : null,
+      f.league ? ['League', f.league] : null,
+      f.club ? ['Club', f.club] : null,
+      ['Max Buy Now', n(f.maxBuyNow)],
+    ].filter(Boolean);
+
+    return el('div', { style: 'margin-bottom:14px' },
+      el('div', { style: 'font-weight:600;margin-bottom:6px' }, p.description),
+
+      p.options.length > 0
+        ? table(
+            ['Player', { label: 'Rating', num: true }, { label: 'Price', num: true }, 'Club', 'Nation'],
+            p.options.map((o) => el('tr', {},
+              el('td', {}, o.name),
+              el('td', { class: 'num' }, o.rating),
+              el('td', { class: 'num' }, n(o.priceCoins)),
+              el('td', { class: 'muted' }, o.clubName || '—'),
+              el('td', { class: 'muted' }, o.nationName || '—'),
+            )),
+          )
+        : el('p', { class: 'muted', style: 'font-size:12px;margin:4px 0' },
+            'No prices imported, so no named cards. The estimate is from the rating curve — ' +
+            'import a price list on the Market Prices page for real figures.'),
+
+      el('div', { style: 'margin-top:8px' },
+        el('div', { class: 'muted', style: 'font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px' },
+          'Search the transfer market with'),
+        el('div', { class: 'mono', style: 'font-size:12px;line-height:1.7' },
+          ...filterRows.map(([k, v]) =>
+            el('div', {}, el('span', { class: 'muted' }, `${k}: `), String(v)))),
+      ),
+    );
+  });
+
+  return el('div', { class: 'warn high' },
+    el('div', { class: 'msg' }, 'Cards you need to buy'),
+    ...blocks);
 }
 
 function tileOf(label, value) {
@@ -532,6 +596,73 @@ loaders.history = async () => {
     )),
   ));
 };
+
+// ------------------------------------------------------------------ prices
+loaders.prices = async () => {
+  const data = await api('/api/prices');
+  $('#price-table').replaceChildren(
+    el('p', { class: 'muted' },
+      data.total === 0
+        ? 'No prices stored. Paste a list above.'
+        : `${n(data.total)} prices, last updated ${new Date(data.updatedAt).toLocaleString()}.`),
+    table(
+      ['Player', { label: 'Rating', num: true }, { label: 'Price', num: true }, 'Club', 'Nation', 'League'],
+      data.prices.map((p) => el('tr', {},
+        el('td', {}, p.name || el('span', { class: 'muted' }, `any ${p.rating}`)),
+        el('td', { class: 'num' }, p.rating),
+        el('td', { class: 'num' }, n(p.priceCoins)),
+        el('td', { class: 'muted' }, p.clubName || '—'),
+        el('td', { class: 'muted' }, p.nationName || '—'),
+        el('td', { class: 'muted' }, p.leagueName || '—'),
+      )),
+    ),
+  );
+};
+
+$('#price-import').addEventListener('click', async () => {
+  const text = $('#price-text').value.trim();
+  if (!text) return;
+  const btn = $('#price-import');
+  btn.disabled = true;
+  $('#price-status').textContent = 'Importing...';
+
+  try {
+    const result = await api('/api/prices/import', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, replace: true }),
+    });
+
+    $('#price-result').replaceChildren(
+      el('p', {}, `Imported ${n(result.imported)} prices.`),
+      // Failed lines are shown, not counted: seeing the line is what lets you
+      // fix it.
+      result.errorCount > 0
+        ? el('div', { class: 'banner' },
+            el('div', { style: 'font-weight:600;margin-bottom:4px' },
+              `${result.errorCount} line(s) could not be read:`),
+            ...result.errors.map((e) =>
+              el('div', { class: 'mono', style: 'font-size:11px' },
+                `line ${e.line}: ${e.text} — ${e.reason}`)))
+        : null,
+    );
+    $('#price-status').textContent = '';
+    loaded.prices = false;
+    await loaders.prices();
+  } catch (e) {
+    $('#price-result').replaceChildren(el('div', { class: 'banner' }, e.message));
+    $('#price-status').textContent = '';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$('#price-clear').addEventListener('click', async () => {
+  if (!confirm('Delete all stored prices?')) return;
+  await api('/api/prices', { method: 'DELETE' });
+  $('#price-result').replaceChildren();
+  loaded.prices = false;
+  await loaders.prices();
+});
 
 // ---------------------------------------------------------------- settings
 loaders.settings = async () => {

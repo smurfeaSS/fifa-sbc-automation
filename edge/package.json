@@ -2,7 +2,7 @@
   "name": "fc27-sbc-edge",
   "version": "1.0.0",
   "private": true,
-  "description": "FC 27 Smart SBC Assistant \u2014 Cloudflare Workers edition, behind Cloudflare Access",
+  "description": "FC 27 Smart SBC Assistant — Cloudflare Workers edition, behind Cloudflare Access",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --env production",

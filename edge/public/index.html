@@ -6,6 +6,7 @@
 <title>FC 27 Smart SBC Assistant</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%2358a6ff'/%3E%3Ctext x='8' y='12' font-size='10' font-family='sans-serif' font-weight='bold' text-anchor='middle' fill='%230d1117'%3ES%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/cards.css">
 </head>
 <body>
 <div class="layout">
@@ -18,6 +19,7 @@
     <button data-view="fodder">Fodder</button>
     <button data-view="protected">Protected Players</button>
     <button data-view="history">SBC History</button>
+    <button data-view="prices">Market Prices</button>
     <button data-view="settings">Settings</button>
     <div class="identity">Signed in via Cloudflare Access<strong id="who">…</strong></div>
     <p class="note">
@@ -116,6 +118,42 @@
       <div id="hist-table"></div>
     </section>
 
+    <!-- Prices -->
+    <section class="view" id="view-prices">
+      <h2>Market Prices</h2>
+      <p class="sub">Used to name the cheapest real cards when an SBC needs something you do not own.</p>
+
+      <div class="panel">
+        <h3>Why this is a paste box</h3>
+        <p class="muted" style="margin-top:0;font-size:13px">
+          The tool does not query the live transfer market. Searching listings by
+          criteria in a loop is the sniping pattern, it is the riskiest thing you
+          can do against EA's servers, and <span class="mono">automation.md</span> §23
+          rules it out. So prices come from a list you paste in.
+        </p>
+        <p class="muted" style="font-size:13px">
+          Anything works: rows copied from a price site, or a spreadsheet export.
+          <span class="mono">Mbappe, 91, 1200000</span> or just
+          <span class="mono">86, 9200</span> for a whole rating band. Headers are
+          ignored; any row that cannot be read is reported with its line number
+          rather than dropped.
+        </p>
+        <textarea id="price-text" rows="8" style="width:100%;font-family:var(--mono);font-size:12px"
+          placeholder="Name, Rating, Price&#10;Mbappe, 91, 1200000&#10;86, 9200"></textarea>
+        <div style="margin-top:10px">
+          <button class="action" id="price-import">Import prices</button>
+          <button class="ghost" id="price-clear">Clear all</button>
+          <span class="muted" id="price-status"></span>
+        </div>
+        <div id="price-result"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Stored prices</h3>
+        <div id="price-table"></div>
+      </div>
+    </section>
+
     <!-- Settings -->
     <section class="view" id="view-settings">
       <h2>Settings</h2>
@@ -168,6 +206,7 @@
     </section>
   </main>
 </div>
+<script src="/card.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

@@ -18,6 +18,19 @@ import type { ProtectionSettings, Settings, SolverWeights } from '../shared/club
 /** Cost assigned to a protected card outside strict mode. */
 export const PROTECTED_PENALTY_SOFT = 10_000_000;
 
+/**
+ * Default protection rules.
+ *
+ * The value threshold deliberately protects only genuinely valuable tradeables.
+ * Everything below it is ordinary fodder and stays usable — a tool that
+ * withholds every tradeable card cannot complete much, and cheap tradeable
+ * fodder is exactly what an SBC should consume once duplicates and
+ * untradeables run out (automation.md §3, tiers 4 and 5).
+ *
+ * The ordering within the usable pool does the real work: the solver sorts by
+ * sacrifice cost ascending, so the cheapest card that fits is always taken
+ * first, whether it is tradeable or not.
+ */
 export const DEFAULT_PROTECTION: ProtectionSettings = {
   valueThreshold: 15_000,
   protectActiveSquad: true,
@@ -36,6 +49,9 @@ export const DEFAULT_PROTECTION: ProtectionSettings = {
 };
 
 export const DEFAULT_WEIGHTS: SolverWeights = {
+  // A tradeable card's loss is its real coin value — those are coins you could
+  // otherwise have banked. Untradeables are discounted below because they are
+  // the currency an SBC is meant to spend.
   tradeableValueLoss: 1.0,
   // Untradeables are the currency we *want* spent, so their loss is discounted
   // heavily. Not to zero — an untradeable 88 is still worth more than an 84.

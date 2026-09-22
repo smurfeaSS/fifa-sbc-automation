@@ -42,6 +42,8 @@ export interface Warning {
 export interface SquadPreview {
   status: SquadStatus;
   warnings: Warning[];
+  /** Cards the club cannot supply, rendered as outlined "buy this" cards. */
+  missing: SolvedSquad['missing'];
   /** Ordered worst-first, for the player list in the UI. */
   players: Array<{
     player: AnnotatedPlayer;
@@ -237,6 +239,7 @@ export function buildPreview(
   return {
     status: statusFor(squad, warnings, settings),
     warnings,
+    missing: squad.missing,
     players,
     summary: {
       requiredRating,
