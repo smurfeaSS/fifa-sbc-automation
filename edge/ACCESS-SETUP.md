@@ -31,8 +31,38 @@ while that is true.
 
 ## 4. Create the Access application
 
-In the Cloudflare dashboard: **Zero Trust → Access → Applications → Add an
-application → Self-hosted**.
+### From the terminal (gets the AUD tag for you)
+
+```bash
+export CF_API_TOKEN=your_token_here
+npm run setup:access -- --hostname sbc.yourdomain.com --email you@example.com
+```
+
+The token comes from **dash.cloudflare.com/profile/api-tokens → Create Token →
+Custom token**, with:
+
+```
+Account | Cloudflare Zero Trust     | Edit
+Account | Access: Apps and Policies | Edit
+```
+
+wrangler's own OAuth token will not work — it carries no Access scope.
+
+This creates the application and a single Allow policy for one address, then
+writes the AUD tag and team name into `wrangler.toml`. Doing it here rather
+than by hand matters for one reason: the AUD is what stops a token minted for
+some *other* Access application on your account being accepted by this one, and
+copying 64 hex characters by hand is a good way to get it subtly wrong.
+
+It also warns if the application already carries a **Bypass** policy — which
+would switch authentication off entirely — or Allow policies for anyone else.
+
+Skip to step 6 once it succeeds. The rest of this section is the manual
+equivalent.
+
+### From the dashboard (manual equivalent)
+
+**Zero Trust → Access → Applications → Add an application → Self-hosted**.
 
 | Field | Value |
 |---|---|

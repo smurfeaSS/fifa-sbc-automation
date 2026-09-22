@@ -17,7 +17,8 @@
     "test:node": "vitest run",
     "test:workers": "vitest run --config vitest.workers.config.ts",
     "kv:create:preview": "wrangler kv namespace create ACCESS_KEYS --preview",
-    "setup": "node scripts/setup.mjs"
+    "setup": "node scripts/setup.mjs",
+    "setup:access": "node scripts/setup-access.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.36.4",
