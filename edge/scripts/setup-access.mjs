@@ -39,7 +39,7 @@ const c = {
   bold: (s) => `\x1b[1m${s}\x1b[0m`,
 }
 
-const token = process.env.CF_API_TOKEN
+const token = process.env.CF_API_TOKEN?.trim()
 if (!token) {
   console.error(c.red('\n  CF_API_TOKEN is not set.\n'))
   console.error('  Create one at ' + c.bold('dash.cloudflare.com/profile/api-tokens'))
@@ -48,6 +48,62 @@ if (!token) {
   console.error('      Account | Access: Apps and Policies | Edit\n')
   console.error('  Then:  ' + c.bold('export CF_API_TOKEN=your_token_here') + '\n')
   process.exit(1)
+}
+
+/**
+ * Verify the token before doing anything with it.
+ *
+ * Without this the first real call fails with Cloudflare's error 9106,
+ * "Authentication failed", which reads like a permissions problem and is
+ * usually an empty environment variable. Checking up front lets the message
+ * say which of the two it actually is.
+ */
+{
+  let res
+  try {
+    res = await fetch(`${API}/user/tokens/verify`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  } catch (e) {
+    // Not the same thing as a rejected token, and must not be reported as one.
+    console.error(c.red('\n  Could not reach the Cloudflare API.'))
+    console.error(`  ${e.message}\n`)
+    console.error(c.dim('  Check your connection, or a proxy/firewall between you and'))
+    console.error(c.dim('  api.cloudflare.com. Nothing was changed.\n'))
+    process.exit(1)
+  }
+
+  const text = await res.text()
+  let body
+  try {
+    body = JSON.parse(text)
+  } catch {
+    console.error(c.red(`\n  The Cloudflare API returned something that is not JSON (HTTP ${res.status}).`))
+    console.error(c.dim(`  ${text.slice(0, 200).replace(/\s+/g, ' ').trim() || '(empty response)'}`))
+    console.error(c.dim('\n  That usually means a proxy intercepted the request. Nothing was changed.\n'))
+    process.exit(1)
+  }
+
+  if (!body.success) {
+    const code = body.errors?.[0]?.code
+    console.error(c.red('\n  That API token was rejected by Cloudflare.\n'))
+    if (code === 9106 || code === 6003 || code === 1000) {
+      console.error(`  The token looks malformed or empty (${token.length} characters read;`)
+      console.error('  a Cloudflare API token is 40). Check it was exported in THIS shell:\n')
+      console.error(`    ${c.bold('echo "${#CF_API_TOKEN}"')}   ${c.dim('# should print 40')}`)
+      console.error(`    ${c.bold('export CF_API_TOKEN=your_actual_token')}\n`)
+    } else {
+      console.error('  ' + (body.errors ?? []).map((e) => `${e.code}: ${e.message}`).join('\n  ') + '\n')
+    }
+    process.exit(1)
+  }
+
+  if (body.result?.status !== 'active') {
+    console.error(c.red(`\n  The token is valid but its status is "${body.result?.status}".`))
+    console.error(c.dim('  An expired or disabled token needs replacing at'))
+    console.error(c.dim('  dash.cloudflare.com/profile/api-tokens\n'))
+    process.exit(1)
+  }
 }
 
 let toml = readFileSync(CONFIG, 'utf8')
@@ -99,9 +155,13 @@ let org
 try {
   org = await cf(`/accounts/${accountId}/access/organizations`)
 } catch (e) {
-  console.error(c.red(`  Could not read the Zero Trust organisation: ${e.message}`))
-  console.error(c.dim('\n  If this is a permissions error, the token needs'))
-  console.error(c.dim('  Account | Cloudflare Zero Trust | Edit\n'))
+  console.error(c.red(`\n  Could not read the Zero Trust organisation.`))
+  console.error(`  ${e.message}\n`)
+  // The token verified moments ago, so this is a scope problem, not auth.
+  console.error(c.dim('  The token is valid, so it is missing a permission. It needs BOTH:\n'))
+  console.error(c.dim('      Account | Cloudflare Zero Trust     | Edit'))
+  console.error(c.dim('      Account | Access: Apps and Policies | Edit\n'))
+  console.error(c.dim('  Add them at dash.cloudflare.com/profile/api-tokens and re-run.\n'))
   process.exit(1)
 }
 
