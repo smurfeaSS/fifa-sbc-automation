@@ -18,49 +18,16 @@ app into an open one.
 
 ---
 
-## 1. Create the D1 database and KV namespace
+## 1-3. Create the resources and deploy once
 
-```bash
-cd edge
-npm install
+See **[DEPLOY.md](DEPLOY.md)** steps 1 to 5: create the D1 database
+(`fc27-sbc-assistant-club`) and the KV namespace (`ACCESS_KEYS`), run the
+migrations, set your hostname, and deploy.
 
-npm run db:create      # prints database_id
-npm run kv:create      # prints the namespace id
-```
-
-Paste both ids into `wrangler.toml`, replacing every `REPLACE_WITH_YOUR_D1_ID`
-and `REPLACE_WITH_YOUR_KV_ID` (they appear in the top-level block *and* under
-`[env.production]` — both need filling in).
-
-Then create the tables:
-
-```bash
-npm run db:migrate:production
-```
-
-## 2. Pick your hostname
-
-In `wrangler.toml`, under `[env.production]`, set the route:
-
-```toml
-routes = [
-  { pattern = "sbc.yourdomain.com", custom_domain = true }
-}
-```
-
-The domain must be on your Cloudflare account. Access can only protect hostnames
-Cloudflare has DNS for.
-
-## 3. Deploy once
-
-```bash
-npm run deploy
-```
-
-Deploying before creating the Access application is deliberate: the app needs to
-exist at that hostname before Access can be pointed at it. It is not reachable
-yet in any useful sense — the Worker rejects every request until `ACCESS_AUD` is
-set, which is the fail-closed behaviour from `verifyAccessJwt`.
+Deploy before creating the Access application — the app must exist at that
+hostname before Access can be pointed at it. It is not exposed in the meantime:
+`ACCESS_AUD` is still a placeholder, and `verifyAccessJwt` refuses every request
+while that is true.
 
 ## 4. Create the Access application
 
@@ -150,7 +117,7 @@ Cloudflare login, and after it the dashboard, with your address shown in the
 sidebar under "Signed in via Cloudflare Access".
 
 **Confirm the workers.dev route is gone.** In the dashboard under **Workers &
-Pages → fc27-sbc-production → Settings → Domains & Routes**, there should be no
+Pages → fc27-sbc-assistant-prod → Settings → Domains & Routes**, there should be no
 `workers.dev` entry. `workers_dev = false` in `wrangler.toml` handles this, but
 it is worth seeing with your own eyes, because that hostname bypasses Access
 entirely.

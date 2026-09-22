@@ -1,11 +1,16 @@
 import { defineConfig } from 'vitest/config'
 
-// Plain Node environment: the code under test uses only Web Crypto and fetch,
-// both of which Node 22 provides natively. That keeps these tests fast and
-// exercises the real signature path rather than a stub.
+/**
+ * Node-environment tests: the solver and the Access JWT logic, both of which
+ * use only Web Crypto and fetch. Running them here keeps them fast and
+ * exercises the real signature path rather than a stub.
+ *
+ * Tests that need actual Workers runtime APIs (HTMLRewriter, D1) live in
+ * tests/workers/ and run under vitest.workers.config.ts instead.
+ */
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/*.test.ts'],
   },
 })

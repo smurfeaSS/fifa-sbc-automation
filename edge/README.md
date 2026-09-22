@@ -12,10 +12,17 @@ D1 via Drizzle, KV, Workers Assets.
 KV setup, the Access application and policy, and — importantly — how to verify
 the thing is actually locked before you put your club in it.
 
+**[DEPLOY.md](DEPLOY.md)** has every wrangler command, with the resource names
+this app uses. GitHub holds the source; Cloudflare gets everything through
+`wrangler` — `wrangler deploy` uploads the Worker and the whole of `public/` in
+one call, so there is no separate front-end step.
+
 ```bash
 cd edge
 npm install
-npm run db:create && npm run kv:create   # paste the ids into wrangler.toml
+npm run db:create              # wrangler d1 create fc27-sbc-assistant-club
+npm run kv:create              # wrangler kv namespace create ACCESS_KEYS
+# paste the printed ids into wrangler.toml (both [vars] and [env.production])
 npm run db:migrate:production
 npm run deploy
 ```
@@ -38,7 +45,7 @@ double that for a single SBC set:
 | Solver input | all ~1,800 players | ~400-row candidate pool |
 | Import | one pass | chunked, 250 players per request |
 | SBC set | solved in one call | one challenge per request |
-| Scraper | cheerio | not ported — see below |
+| Scraper | cheerio | HTMLRewriter, streaming |
 
 **The candidate pool** is the interesting one. A solve only ever needs the
 cheapest few players at each rating: anything more expensive at the same rating
@@ -68,6 +75,7 @@ Everything except `/health` requires a verified Access identity.
 | `GET/POST /api/settings`, `POST /api/reannotate` | Settings, and the paged re-annotation a settings change requires. |
 | `POST /api/lock` | Lock or unlock a player. |
 | `GET/POST /api/sbcs`, `POST /api/parse-sbc` | SBC definitions. |
+| `POST /api/scrape/{index,page}` | Refresh SBCs from the configured site. |
 | `GET/POST /api/history` | Submission history. |
 
 Every response is bounded to 100 rows, per `CLAUDE.md` §17.
@@ -84,12 +92,48 @@ wrong issuer, wrong audience, expired, not-yet-valid, and
 unconfigured-fails-closed. Twelve cover the solver, including the candidate-pool
 equivalence claim and the CPU budget.
 
+## The scraper
+
+Rebuilt on `HTMLRewriter`, Cloudflare's native streaming parser. cheerio is out:
+`CLAUDE.md` §17 forbids heavy library imports, and building a DOM for a page
+you only need six values from is exactly the "heavy synchronous computation"
+it warns against. HTMLRewriter adds nothing to the bundle and never
+materialises a tree.
+
+The cost is that it is streaming and stateless — there is no
+`node.find(child)`, because by the time a handler runs there is no tree to
+query. So the parsers are small state machines driven by document order: an
+element handler opens a record, its descendants' handlers fill it in, and
+`onEndTag` closes it. Text arrives in chunks and is accumulated until
+`lastInTextNode`; reading only the first chunk would silently truncate any
+requirement long enough to be split.
+
+It is off by default and needs an explicit base URL. When on, the UI shows a
+**Refresh from source** button that fetches the index, then each set as its own
+request — parsing costs CPU, so a dozen pages in one request would exceed the
+budget.
+
+Guards, all of which exist because the input is not yours:
+
+- `assertSameHost` refuses any URL off the configured host or not over HTTPS.
+  Set URLs come from a scraped page, so without it the endpoint would be an
+  open proxy — any link on that page could make the Worker fetch anything.
+- Hard caps on sets, challenges, requirement lines, text length and response
+  size, so a hostile or merely enormous page cannot exhaust the CPU budget.
+- A hand-corrected SBC is never overwritten by a scrape.
+- Requirement text that cannot be read is kept as `unparsed` and lowers the
+  set's confidence, rather than being guessed at or dropped.
+
+**The default selectors are not calibrated against any live site** — no site was
+available to check them against. Expect to adjust them once by looking at the
+page source. They are settings rather than code because markup changes are
+routine, not a bug to be fixed in a release.
+
+Scraping is against most community sites' terms of service. If the site offers
+an API, use that instead.
+
 ## Not ported
 
-- **The SBC scraper.** It used cheerio, which `CLAUDE.md` §17 rules out as a
-  heavy import. Rebuilding it on `HTMLRewriter` is the right move and has not
-  been done. `POST /api/parse-sbc` still turns pasted requirement text into
-  structured constraints, which covers the same need with one paste.
 - **The CLI.** Superseded by the web UI.
 - **Chemistry-constrained solving.** Ported and available, but as in the local
   build it needs a formation assignment to evaluate, so chemistry requirements

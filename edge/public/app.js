@@ -232,6 +232,15 @@ loaders.solver = async () => {
   const { sets } = await api('/api/sbcs');
   $('#sbc-notices').replaceChildren();
 
+  // The scrape button only appears when a source is actually configured —
+  // offering it otherwise just produces an error on click.
+  try {
+    const settings = await api('/api/settings');
+    $('#scrape-go').hidden = !(settings.sbcSources?.scraperEnabled && settings.sbcSources?.scraperBaseUrl);
+  } catch {
+    $('#scrape-go').hidden = true;
+  }
+
   const select = $('#sbc-select');
   select.replaceChildren();
   if (sets.length === 0) {
@@ -286,6 +295,59 @@ $('#solve-go').addEventListener('click', async () => {
     $('#solve-status').textContent = '';
   } catch (e) {
     $('#solve-result').replaceChildren(el('div', { class: 'banner' }, e.message));
+    $('#solve-status').textContent = '';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/**
+ * Refresh SBC definitions from the configured community site.
+ *
+ * One request fetches the index, then one request per set. Split that way
+ * because HTMLRewriter parsing costs CPU and the Worker has 10ms per request —
+ * and it gives honest per-set progress rather than one long stall.
+ */
+$('#scrape-go').addEventListener('click', async () => {
+  const btn = $('#scrape-go');
+  btn.disabled = true;
+  const notices = $('#sbc-notices');
+  notices.replaceChildren();
+
+  try {
+    $('#solve-status').textContent = 'Fetching the SBC index...';
+    const index = await api('/api/scrape/index', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: '/' }),
+    });
+
+    if (index.note) notices.append(el('div', { class: 'banner' }, index.note));
+    if (index.stubs.length === 0) { $('#solve-status').textContent = ''; return; }
+
+    const problems = [];
+    for (let i = 0; i < index.stubs.length; i++) {
+      const stub = index.stubs[i];
+      $('#solve-status').textContent = `Reading ${stub.name} (${i + 1} of ${index.stubs.length})...`;
+      const result = await api('/api/scrape/page', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stub }),
+      });
+      if (result.failed) problems.push(`${result.name}: ${result.message}`);
+      else if (result.warning) problems.push(result.warning);
+      else if (result.skipped) problems.push(`${result.name}: ${result.reason}`);
+    }
+
+    // Per-set problems are listed individually rather than summarised, since a
+    // partial parse matters for the specific SBC it happened on.
+    for (const p of problems) notices.append(el('div', { class: 'banner' }, p));
+    notices.append(el('p', { class: 'muted' },
+      `Refreshed ${index.stubs.length - problems.length} of ${index.stubs.length} SBCs.`));
+
+    loaded.solver = false;
+    await loaders.solver();
+    $('#solve-status').textContent = '';
+  } catch (e) {
+    notices.replaceChildren(el('div', { class: 'banner' }, e.message));
     $('#solve-status').textContent = '';
   } finally {
     btn.disabled = false;

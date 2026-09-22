@@ -1,0 +1,266 @@
+# Deploy runbook
+
+Every Cloudflare resource is named for this app, so nothing collides with
+anything else on your account and every line in the dashboard is
+self-explanatory:
+
+| Resource | Name | Binding |
+|---|---|---|
+| Worker (production) | `fc27-sbc-assistant-prod` | — |
+| Worker (dev) | `fc27-sbc-assistant` | — |
+| D1 database | `fc27-sbc-assistant-club` | `DB` |
+| KV namespace | `fc27-sbc-assistant-ACCESS_KEYS` | `ACCESS_KEYS` |
+| Access application | `FC 27 SBC Assistant` | — |
+| Hostname | `sbc.yourdomain.com` | — |
+
+The KV namespace title is derived by wrangler from the Worker name plus the
+binding, which is why it reads `fc27-sbc-assistant-ACCESS_KEYS`. It holds the
+Cloudflare Access signing keys and nothing else — named for the job so what is
+in it is obvious without opening it.
+
+**GitHub holds the source; Cloudflare gets everything through `wrangler`.**
+Nothing in this repo is deployed by pushing to GitHub. `wrangler deploy`
+uploads the bundled Worker *and* everything under `edge/public/` in one call
+(via the `[assets]` binding) — there is no separate step for the front end.
+
+---
+
+## 0. Log in, once
+
+```bash
+cd edge
+npm install
+npx wrangler login
+```
+
+Confirm you are on the right account before creating anything:
+
+```bash
+npx wrangler whoami
+```
+
+## 1. Create the D1 database
+
+```bash
+npm run db:create
+```
+
+Runs `wrangler d1 create fc27-sbc-assistant-club`. It prints a block like:
+
+```
+[[d1_databases]]
+binding = "DB"
+database_name = "fc27-sbc-assistant-club"
+database_id = "a1b2c3d4-...."
+```
+
+Copy that `database_id` into `wrangler.toml`, replacing **both** occurrences of
+`REPLACE_WITH_CLUB_DB_ID` — one in the top-level `[[d1_databases]]` block and
+one under `[[env.production.d1_databases]]`. Environment blocks do not inherit
+bindings, so missing the second one means production deploys with no database.
+
+## 2. Create the KV namespace
+
+```bash
+npm run kv:create            # production namespace
+npm run kv:create:preview    # preview namespace, used by `wrangler dev`
+```
+
+These run `wrangler kv namespace create ACCESS_KEYS` (and `--preview`). Each
+prints an id:
+
+```
+[[kv_namespaces]]
+binding = "ACCESS_KEYS"
+id = "9f8e7d...."
+```
+
+Put the production id into both `REPLACE_WITH_ACCESS_KEYS_ID` slots, and the
+preview id into `REPLACE_WITH_ACCESS_KEYS_PREVIEW_ID`.
+
+## 3. Create the tables
+
+```bash
+npm run db:migrate:production
+```
+
+Runs `wrangler d1 migrations apply fc27-sbc-assistant-club --env production
+--remote`. The `--remote` flag is what makes this touch the real database —
+without it wrangler writes to the local SQLite file under `.wrangler/` and the
+deployed Worker still has no tables.
+
+Check it landed:
+
+```bash
+npx wrangler d1 execute fc27-sbc-assistant-club --env production --remote \
+  --command="SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+```
+
+Expect: `club_meta`, `history`, `players`, `sbcs`, `settings`, `squads`,
+plus `d1_migrations`.
+
+## 4. Set your hostname
+
+In `wrangler.toml`, under `[env.production]`:
+
+```toml
+routes = [
+  { pattern = "sbc.yourdomain.com", custom_domain = true }
+]
+```
+
+The domain must already be on your Cloudflare account — Access can only protect
+hostnames Cloudflare has DNS for. `custom_domain = true` makes wrangler create
+the DNS record for you on deploy.
+
+## 5. First deploy
+
+```bash
+npm run deploy
+```
+
+Runs `wrangler deploy --env production`, which uploads in one call:
+
+- the bundled Worker (`src/**`, esbuild-bundled by wrangler)
+- every file under `edge/public/` as static assets
+- the binding configuration from `wrangler.toml`
+
+It does **not** apply migrations — that is step 3, and it is a separate command
+on purpose so a code deploy can never silently alter your schema.
+
+The app is not usefully reachable yet: `ACCESS_AUD` is still a placeholder, and
+`verifyAccessJwt` refuses every request while that is true. That is the intended
+fail-closed behaviour, and it is why deploying before configuring Access is safe.
+
+## 6. Configure Cloudflare Access
+
+Follow **[ACCESS-SETUP.md](ACCESS-SETUP.md)** from step 4 onward. In short:
+create a self-hosted Access application on `sbc.yourdomain.com`, add one Allow
+policy with the **Emails** selector set to `mariosxen7@icloud.com`, enable
+One-time PIN as the login method, then copy the AUD tag.
+
+Put the AUD tag and your team name into **both** `[vars]` blocks in
+`wrangler.toml`:
+
+```toml
+ACCESS_TEAM_DOMAIN = "yourteam"
+ACCESS_AUD = "the-64-character-aud-tag"
+ALLOWED_EMAIL = "mariosxen7@icloud.com"
+```
+
+## 7. Deploy again, then verify it is actually locked
+
+```bash
+npm run deploy
+```
+
+Run these before putting any club data in:
+
+```bash
+# Public by design, and says nothing else.
+curl -s https://sbc.yourdomain.com/health
+
+# Must be 403.
+curl -so /dev/null -w '%{http_code}\n' https://sbc.yourdomain.com/api/club/summary
+
+# Must ALSO be 403. A 200 here means run_worker_first is not applying and the
+# dashboard is being served straight off the asset server, skipping Access.
+curl -so /dev/null -w '%{http_code}\n' https://sbc.yourdomain.com/
+
+# A forged token with the right email must still be 403.
+curl -so /dev/null -w '%{http_code}\n' \
+  -H 'Cf-Access-Jwt-Assertion: eyJhbGciOiJub25lIn0.eyJlbWFpbCI6Im1hcmlvc3hlbjdAaWNsb3VkLmNvbSJ9.' \
+  https://sbc.yourdomain.com/api/club/summary
+```
+
+Expected: `{"ok":true}`, then `403`, `403`, `403`.
+
+Confirm there is no `workers.dev` route:
+
+```bash
+npx wrangler deployments list --env production
+```
+
+`workers_dev = false` handles this, but that hostname bypasses Access entirely,
+so it is worth confirming rather than assuming.
+
+---
+
+## Everyday commands
+
+```bash
+npm run deploy                  # push code + UI to Cloudflare
+npm run tail                    # live logs: wrangler tail --env production
+npm test                        # 48 tests, node + workers runtimes
+npm run dev                     # local, at http://127.0.0.1:8787
+```
+
+### Local development
+
+```bash
+npm run db:migrate:local        # local SQLite under .wrangler/
+npm run dev
+```
+
+`wrangler dev` runs the real Worker code, so Access still rejects everything —
+that is correct, not a bug. To exercise the UI locally, run it against the
+deployed app instead, or temporarily point `ACCESS_TEAM_DOMAIN` at your real
+team so the login flow works.
+
+### Changing who can get in
+
+Two places, and both must agree:
+
+```bash
+# 1. Edit the Access policy in the Cloudflare dashboard.
+# 2. Edit ALLOWED_EMAIL in wrangler.toml (both [vars] blocks), then:
+npm run deploy
+```
+
+The duplication is deliberate. Widening the Access policy alone grants nothing,
+because the Worker checks the address itself — so a fat-fingered policy edit
+fails closed.
+
+### Inspecting the database
+
+```bash
+npx wrangler d1 execute fc27-sbc-assistant-club --env production --remote \
+  --command="SELECT COUNT(*) AS players, SUM(is_protected) AS protected FROM players"
+```
+
+### Starting over
+
+```bash
+npx wrangler d1 execute fc27-sbc-assistant-club --env production --remote \
+  --command="DELETE FROM players; DELETE FROM squads; DELETE FROM club_meta"
+```
+
+Re-importing does this for you — `POST /api/import/begin` clears the club first,
+because merging would leave cards you have since spent still in the database.
+
+### Deleting everything
+
+```bash
+npx wrangler delete --env production
+npx wrangler d1 delete fc27-sbc-assistant-club
+npx wrangler kv namespace delete --binding ACCESS_KEYS
+```
+
+Then remove the Access application in the Zero Trust dashboard.
+
+---
+
+## What costs what
+
+All of this fits inside Cloudflare's free tier for one person:
+
+| | Free allowance | This app |
+|---|---|---|
+| Worker requests | 100,000/day | a few hundred |
+| Worker CPU | 10ms/request | ~1–6ms, measured |
+| D1 rows read | 5,000,000/day | ~400 per solve |
+| D1 storage | 5GB | a few MB |
+| KV reads | 100,000/day | one per cold isolate |
+| Access seats | 50 users | 1 |
+
+The 10ms CPU ceiling is the one that shaped the architecture — see the README.

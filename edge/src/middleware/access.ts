@@ -110,7 +110,7 @@ function teamDomain(env: AppEnv['Bindings']): string {
  * be added to page loads.
  */
 async function getJwks(env: AppEnv['Bindings']): Promise<AccessJwk[]> {
-  const cached = await env.CACHE.get(JWKS_CACHE_KEY, 'json').catch(() => null)
+  const cached = await env.ACCESS_KEYS.get(JWKS_CACHE_KEY, 'json').catch(() => null)
   if (cached && Array.isArray(cached)) return cached as AccessJwk[]
 
   const url = `https://${teamDomain(env)}/cdn-cgi/access/certs`
@@ -126,7 +126,7 @@ async function getJwks(env: AppEnv['Bindings']): Promise<AccessJwk[]> {
   }
 
   // Failing to cache is not fatal — verification still works, just slower.
-  await env.CACHE.put(JWKS_CACHE_KEY, JSON.stringify(keys), {
+  await env.ACCESS_KEYS.put(JWKS_CACHE_KEY, JSON.stringify(keys), {
     expirationTtl: JWKS_CACHE_SECONDS,
   }).catch(() => undefined)
 

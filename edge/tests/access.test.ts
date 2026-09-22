@@ -54,7 +54,7 @@ function makeEnv(over: Partial<Bindings> = {}): Bindings {
     ACCESS_TEAM_DOMAIN: TEAM,
     ACCESS_AUD: AUD,
     ALLOWED_EMAIL: EMAIL,
-    CACHE: {
+    ACCESS_KEYS: {
       get: async () => null,
       put: async () => undefined,
     } as unknown as KVNamespace,

@@ -1,7 +1,7 @@
 /** Bindings must match wrangler.toml exactly (case-sensitive). */
 export type Bindings = {
   DB: D1Database
-  CACHE: KVNamespace
+  ACCESS_KEYS: KVNamespace
   ASSETS: Fetcher
 
   APP_NAME: string

@@ -2,18 +2,21 @@
   "name": "fc27-sbc-edge",
   "version": "1.0.0",
   "private": true,
-  "description": "FC 27 Smart SBC Assistant — Cloudflare Workers edition, behind Cloudflare Access",
+  "description": "FC 27 Smart SBC Assistant \u2014 Cloudflare Workers edition, behind Cloudflare Access",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --env production",
-    "db:create": "wrangler d1 create fc27-sbc-db",
-    "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "db:migrate:production": "wrangler d1 migrations apply DB --env production --remote",
-    "kv:create": "wrangler kv namespace create CACHE",
+    "db:create": "wrangler d1 create fc27-sbc-assistant-club",
+    "db:migrate:local": "wrangler d1 migrations apply fc27-sbc-assistant-club --local",
+    "db:migrate:production": "wrangler d1 migrations apply fc27-sbc-assistant-club --env production --remote",
+    "kv:create": "wrangler kv namespace create ACCESS_KEYS",
     "tail": "wrangler tail --env production",
-    "test": "vitest run",
+    "test": "vitest run && vitest run --config vitest.workers.config.ts",
     "types": "wrangler types",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test:node": "vitest run",
+    "test:workers": "vitest run --config vitest.workers.config.ts",
+    "kv:create:preview": "wrangler kv namespace create ACCESS_KEYS --preview"
   },
   "dependencies": {
     "drizzle-orm": "^0.36.4",

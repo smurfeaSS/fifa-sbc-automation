@@ -1,4 +1,4 @@
-name = "fc27-sbc"
+name = "fc27-sbc-assistant"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
@@ -31,7 +31,7 @@ not_found_handling = "single-page-application"
 run_worker_first = true
 
 [vars]
-APP_NAME = "fc27-sbc"
+APP_NAME = "fc27-sbc-assistant"
 APP_ENV = "development"
 LOG_LEVEL = "info"
 # The single address allowed in. Enforced in the Worker as well as in the Access
@@ -44,16 +44,18 @@ ACCESS_AUD = "REPLACE_WITH_YOUR_ACCESS_AUD_TAG"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "fc27-sbc-db"
-database_id = "REPLACE_WITH_YOUR_D1_ID"          # run: npm run db:create
+database_name = "fc27-sbc-assistant-club"
+database_id = "REPLACE_WITH_CLUB_DB_ID"          # run: npm run db:create
 migrations_dir = "migrations"
 
 # Caches the Access public keys (JWKS). Without this every request would fetch
 # them, which burns a subrequest and adds latency to every page load.
 [[kv_namespaces]]
-binding = "CACHE"
-id = "REPLACE_WITH_YOUR_KV_ID"                   # run: npm run kv:create
-preview_id = "REPLACE_WITH_YOUR_KV_PREVIEW_ID"
+# Holds the Cloudflare Access signing keys (JWKS). Named for the job rather
+# than "CACHE", so what lives in it is obvious from the binding alone.
+binding = "ACCESS_KEYS"
+id = "REPLACE_WITH_ACCESS_KEYS_ID"               # run: npm run kv:create
+preview_id = "REPLACE_WITH_ACCESS_KEYS_PREVIEW_ID"
 
 [observability]
 enabled = true
@@ -65,7 +67,7 @@ local_protocol = "http"
 
 # ─── PRODUCTION ───────────────────────────────────────────────────────────────
 [env.production]
-name = "fc27-sbc-production"
+name = "fc27-sbc-assistant-prod"
 workers_dev = false
 
 [env.production.assets]
@@ -80,7 +82,7 @@ run_worker_first = true
 # Access protects this hostname. Set up the Access application against exactly
 # this route — see edge/ACCESS-SETUP.md.
 routes = [
-  { pattern = "sbc.REPLACE_WITH_YOUR_DOMAIN.com", custom_domain = true }
+  { pattern = "sbc.REPLACE_WITH_YOUR_DOMAIN", custom_domain = true }
 ]
 
 [env.production.vars]
@@ -92,13 +94,13 @@ ACCESS_AUD = "REPLACE_WITH_YOUR_ACCESS_AUD_TAG"
 
 [[env.production.d1_databases]]
 binding = "DB"
-database_name = "fc27-sbc-db"
-database_id = "REPLACE_WITH_YOUR_D1_ID"
+database_name = "fc27-sbc-assistant-club"
+database_id = "REPLACE_WITH_CLUB_DB_ID"
 migrations_dir = "migrations"
 
 [[env.production.kv_namespaces]]
-binding = "CACHE"
-id = "REPLACE_WITH_YOUR_KV_ID"
+binding = "ACCESS_KEYS"
+id = "REPLACE_WITH_ACCESS_KEYS_ID"
 
 [env.production.observability]
 enabled = true
