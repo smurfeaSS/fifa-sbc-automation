@@ -34,9 +34,16 @@ while that is true.
 ### From the terminal (gets the AUD tag for you)
 
 ```bash
-export CF_API_TOKEN=your_token_here
+export CF_ACCESS_API_TOKEN=your_token_here
 npm run setup:access -- --hostname sbc.yourdomain.com --email you@example.com
+unset CF_ACCESS_API_TOKEN
 ```
+
+**Do not call it `CF_API_TOKEN`.** wrangler reads that name as its own
+credentials, so an Access-scoped token exported under it silently replaces your
+login, and the next `wrangler secret put` or `wrangler deploy` fails with "No
+access to the specified resource" — a message that points nowhere near the
+cause.
 
 The token comes from **dash.cloudflare.com/profile/api-tokens → Create Token →
 Custom token**, with:

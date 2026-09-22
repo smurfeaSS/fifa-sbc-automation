@@ -16,8 +16,14 @@
  *     Account | Access: Apps and Policies    | Edit
  *
  * Usage:
- *   export CF_API_TOKEN=...
+ *   export CF_ACCESS_API_TOKEN=...
  *   node scripts/setup-access.mjs --hostname sbc.mxenofontos.com --email you@example.com
+ *
+ * The variable is deliberately NOT called CF_API_TOKEN. wrangler reads that
+ * name as its own credentials, so exporting an Access-scoped token under it
+ * silently overrides the OAuth login — and every later wrangler command fails
+ * with "No access to the specified resource", which points nowhere near the
+ * cause.
  */
 
 import { readFileSync, writeFileSync, copyFileSync } from 'node:fs'
@@ -39,14 +45,33 @@ const c = {
   bold: (s) => `\x1b[1m${s}\x1b[0m`,
 }
 
-const token = process.env.CF_API_TOKEN?.trim()
+/**
+ * Warn about the variable that breaks wrangler.
+ *
+ * wrangler treats CF_API_TOKEN as its own credentials. An Access-scoped token
+ * exported under that name overrides the OAuth login for every subsequent
+ * wrangler command, which then fails with "No access to the specified
+ * resource" — a message that gives no hint the cause is an environment
+ * variable set for something else entirely.
+ */
+if (process.env.CF_API_TOKEN) {
+  console.error(c.yellow('\n  CF_API_TOKEN is set in this shell.\n'))
+  console.error(c.yellow('  wrangler reads that name as its own credentials, so it will use this'))
+  console.error(c.yellow('  token instead of your login and fail on anything Workers-related.'))
+  console.error(c.yellow('  Use CF_ACCESS_API_TOKEN for this script instead:\n'))
+  console.error(`      ${c.bold('unset CF_API_TOKEN')}`)
+  console.error(`      ${c.bold('export CF_ACCESS_API_TOKEN=your_token')}\n`)
+}
+
+const token = (process.env.CF_ACCESS_API_TOKEN ?? process.env.CF_API_TOKEN)?.trim()
 if (!token) {
-  console.error(c.red('\n  CF_API_TOKEN is not set.\n'))
+  console.error(c.red('\n  CF_ACCESS_API_TOKEN is not set.\n'))
   console.error('  Create one at ' + c.bold('dash.cloudflare.com/profile/api-tokens'))
   console.error('  -> Create Token -> Custom token, with these permissions:\n')
   console.error('      Account | Cloudflare Zero Trust     | Edit')
   console.error('      Account | Access: Apps and Policies | Edit\n')
-  console.error('  Then:  ' + c.bold('export CF_API_TOKEN=your_token_here') + '\n')
+  console.error('  Then:  ' + c.bold('export CF_ACCESS_API_TOKEN=your_token_here') + '\n')
+  console.error(c.dim('  (not CF_API_TOKEN — wrangler reads that one as its own credentials)\n'))
   process.exit(1)
 }
 
@@ -90,8 +115,8 @@ if (!token) {
     if (code === 9106 || code === 6003 || code === 1000) {
       console.error(`  The token looks malformed or empty (${token.length} characters read;`)
       console.error('  a Cloudflare API token is 40). Check it was exported in THIS shell:\n')
-      console.error(`    ${c.bold('echo "${#CF_API_TOKEN}"')}   ${c.dim('# should print 40')}`)
-      console.error(`    ${c.bold('export CF_API_TOKEN=your_actual_token')}\n`)
+      console.error(`    ${c.bold('echo "${#CF_ACCESS_API_TOKEN}"')}   ${c.dim('# should print 40')}`)
+      console.error(`    ${c.bold('export CF_ACCESS_API_TOKEN=your_actual_token')}\n`)
     } else {
       console.error('  ' + (body.errors ?? []).map((e) => `${e.code}: ${e.message}`).join('\n  ') + '\n')
     }
@@ -264,4 +289,9 @@ if (left.includes('REPLACE_WITH_YOUR_EMAIL')) {
   console.log(c.dim(`      paste: ${email}`))
 }
 console.log(`    ${c.bold('npm run deploy')}`)
+if (process.env.CF_API_TOKEN) {
+  console.log(c.yellow(`\n  First: ${c.bold('unset CF_API_TOKEN')}`))
+  console.log(c.yellow('  Both commands above are wrangler commands, and wrangler will use that'))
+  console.log(c.yellow('  token instead of your login — it has no Workers permissions.'))
+}
 console.log(c.dim(`\n  Then open https://${hostname} — you should get a login, not the app.\n`))
