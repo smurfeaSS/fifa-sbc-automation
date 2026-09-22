@@ -96,6 +96,12 @@ function purchasableRatings(required: number | null): number[] {
   return Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
 }
 
+/**
+ * How much worse a purchase is than an owned card of the same estimated value.
+ * See syntheticPlayer below for why this must be comfortably above 1.
+ */
+const PURCHASE_AVERSION = 2.0;
+
 function purchaseEstimate(rating: number): number {
   // Deliberately conservative — over-estimating a purchase makes the solver
   // prefer club players, which is the whole point of the tool.
@@ -136,9 +142,12 @@ function syntheticPlayer(rating: number, n: number, settings: Settings): Annotat
     value: { coins: cost, source: 'heuristic', asOf: new Date().toISOString(), confidence: 0.3 },
     isProtected: false,
     protectionReasons: [],
-    // Purchases are charged at full price and additionally penalised, so a club
-    // player is always preferred to buying an equivalent card.
-    sacrificeCost: cost * settings.weights.purchaseCost * 1.25,
+    // Purchases are charged at full price and then doubled, so buying is always
+    // strictly worse than spending a club card of equal value — the card is a
+    // sunk asset, the coins are not. At a smaller multiplier this ties with an
+    // owned card of the same rating and the solver sends you to the market for
+    // no reason.
+    sacrificeCost: cost * settings.weights.purchaseCost * PURCHASE_AVERSION,
     priorityTier: 9,
   };
 }
