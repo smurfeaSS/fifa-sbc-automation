@@ -45,16 +45,56 @@ const c = {
  * run anything wrangler wrote to stderr was being thrown away — which is how
  * the first version of this script missed the ids it was looking for.
  */
+/**
+ * The account to act on.
+ *
+ * wrangler refuses to guess when a login has access to more than one account,
+ * and it is right to: creating a database on the wrong account is tedious to
+ * undo. Passed with --account, or via CLOUDFLARE_ACCOUNT_ID.
+ */
+const accountId = flag('account') ?? process.env.CLOUDFLARE_ACCOUNT_ID ?? null
+
 function wrangler(argv) {
+  const env = { ...process.env }
+  if (accountId) env.CLOUDFLARE_ACCOUNT_ID = accountId
   try {
     const stdout = execFileSync('npx', ['wrangler', ...argv], {
       encoding: 'utf8',
       stdio: ['inherit', 'pipe', 'pipe'],
+      env,
     })
     return stdout ?? ''
   } catch (e) {
     return `${e.stdout ?? ''}\n${e.stderr ?? ''}`
   }
+}
+
+/**
+ * Detect the multiple-accounts error and list the choices.
+ *
+ * Worth handling explicitly: the raw wrangler message buries the account ids
+ * in prose, and the first run of this script scraped one of them as a resource
+ * id. Naming the situation beats leaving it to be parsed out of an error.
+ */
+function reportAccountAmbiguity(output) {
+  if (!/more than one account/i.test(output)) return false
+
+  const accounts = [...output.matchAll(/`([^`]+)`\s*:\s*`([0-9a-f]{32})`/gi)]
+    .map((m) => ({ name: m[1], id: m[2] }))
+
+  console.error(c.red('\n  This login has access to more than one Cloudflare account,'))
+  console.error(c.red('  so wrangler will not guess which one to use.\n'))
+
+  if (accounts.length > 0) {
+    console.error('  Available accounts:\n')
+    for (const a of accounts) console.error(`    ${c.bold(a.id)}  ${c.dim(a.name)}`)
+  } else {
+    console.error(c.dim('  Run `npx wrangler whoami` to list them.'))
+  }
+
+  console.error(`\n  Re-run with the one holding your Workers Paid plan:\n`)
+  console.error(`    ${c.bold('npm run setup -- --account <id>')}\n`)
+  return true
 }
 
 /** Pull the first JSON array out of wrangler's output, ignoring any preamble. */
@@ -97,7 +137,17 @@ if (!email) {
   console.error(c.dim(who.trim().split('\n').slice(0, 6).join('\n')))
   process.exit(1)
 }
-console.log(`  account: ${c.green(email)}`)
+console.log(`  login:   ${c.green(email)}`)
+
+const listed = [...who.matchAll(/│\s*([^│]+?)\s*│\s*([0-9a-f]{32})\s*│/gi)]
+  .map((m) => ({ name: m[1].trim(), id: m[2] }))
+if (!accountId && listed.length > 1) {
+  console.error(c.red(`\n  ${listed.length} accounts on this login. Pick one:\n`))
+  for (const a of listed) console.error(`    ${c.bold(a.id)}  ${c.dim(a.name)}`)
+  console.error(`\n    ${c.bold('npm run setup -- --account <id>')}\n`)
+  process.exit(1)
+}
+if (accountId) console.log(`  account: ${c.green(accountId)}`)
 
 // ─── D1 ──────────────────────────────────────────────────────────────────────
 console.log(c.dim(`\n  creating D1 database "${DB_NAME}"...`))
@@ -112,6 +162,7 @@ const dbId =
   extractId(dbOut, 'database_id')
 
 if (!dbId) {
+  if (reportAccountAmbiguity(dbOut)) process.exit(1)
   console.error(c.red('\n  Could not create or find the D1 database.'))
   console.error(c.dim(dbOut.trim().slice(0, 800)))
   process.exit(1)
@@ -136,6 +187,7 @@ function createKv(preview) {
     extractId(out, preview ? 'preview_id' : 'id')
 
   if (!id) {
+    if (reportAccountAmbiguity(out)) process.exit(1)
     console.error(c.red(`\n  Could not create or find the ${label} KV namespace.`))
     console.error(c.dim(out.trim().slice(0, 800)))
     console.error(c.dim(`  namespaces seen: ${namespaces.map((x) => x?.title).join(', ') || '(none)'}`))
@@ -205,6 +257,16 @@ const substitutions = [
   ['REPLACE_WITH_ACCESS_KEYS_PREVIEW_ID', kvPreviewId],
   ['REPLACE_WITH_ACCESS_KEYS_ID', kvId],
 ]
+
+// Written into the config so `wrangler deploy`, `d1 migrations apply` and
+// `wrangler tail` all work later without repeating --account.
+if (accountId && !/^account_id\s*=/m.test(toml)) {
+  toml = toml.replace(
+    /^(name = ".*"\n)/m,
+    `$1account_id = "${accountId}"\n`,
+  )
+  console.log(c.dim(`  pinned account_id = ${accountId}`))
+}
 
 const domain = flag('domain')
 const team = flag('team')

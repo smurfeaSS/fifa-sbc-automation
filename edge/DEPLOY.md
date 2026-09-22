@@ -45,6 +45,17 @@ npx wrangler whoami
 npm run setup
 ```
 
+**If your login has access to more than one Cloudflare account**, wrangler will
+not guess between them — and it is right not to, since creating a database on
+the wrong account is tedious to undo. The script lists them and stops:
+
+```bash
+npm run setup -- --account <account-id>
+```
+
+The chosen account is pinned as `account_id` in `wrangler.toml`, so later
+commands — deploy, migrations, tail — work without repeating the flag.
+
 This creates the D1 database and both KV namespaces, then writes all five ids
 into `wrangler.toml` — including the second copy of each under
 `[env.production]`, which env blocks do not inherit and which is the usual
