@@ -13,6 +13,17 @@ import type { SbcSet } from '../shared/sbc'
 
 const app = new Hono<AppEnv>()
 
+// ─── identity ────────────────────────────────────────────────────────────────
+
+/**
+ * Who Access says you are. Read from the verified token, never from a header
+ * the client could set — the value is whatever requireAccess put on the context
+ * after checking the signature.
+ */
+app.get('/me', (c) =>
+  c.json({ success: true, data: { email: c.get('userEmail') }, requestId: c.get('requestId') }),
+)
+
 // ─── settings ────────────────────────────────────────────────────────────────
 
 app.get('/settings', async (c) =>

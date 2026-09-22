@@ -63,12 +63,14 @@ function makeEnv(over: Partial<Bindings> = {}): Bindings {
 }
 
 beforeAll(async () => {
-  keyPair = await crypto.subtle.generateKey(
+  // workers-types declares these as unions covering the symmetric cases, so
+  // the casts narrow to what RSA actually returns.
+  keyPair = (await crypto.subtle.generateKey(
     { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
     true,
     ['sign', 'verify'],
-  )
-  jwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey)
+  )) as CryptoKeyPair
+  jwk = (await crypto.subtle.exportKey('jwk', keyPair.publicKey)) as JsonWebKey
 
   // Serve our test key where Access's JWKS would be.
   vi.stubGlobal('fetch', async (url: string) => {
