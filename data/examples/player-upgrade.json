@@ -1,0 +1,52 @@
+{
+  "id": "player-upgrade",
+  "name": "Player Upgrade",
+  "category": "Upgrades",
+  "description": "Example SBC definition. Copy into data/sbcs/ to make it available to the solver.",
+  "repeatable": true,
+  "challenges": [
+    {
+      "id": "player-upgrade-0",
+      "name": "83 Rated Squad",
+      "requirements": [
+        { "kind": "squad-rating", "comparator": "min", "value": 83 },
+        { "kind": "player-count", "value": 11 }
+      ],
+      "reward": { "description": "Mixed Players Pack", "untradeable": true }
+    },
+    {
+      "id": "player-upgrade-1",
+      "name": "84 Rated Squad",
+      "requirements": [
+        { "kind": "squad-rating", "comparator": "min", "value": 84 },
+        { "kind": "player-count", "value": 11 }
+      ]
+    },
+    {
+      "id": "player-upgrade-2",
+      "name": "84 Rated Squad + TOTW",
+      "requirements": [
+        { "kind": "squad-rating", "comparator": "min", "value": 84 },
+        { "kind": "player-count", "value": 11 },
+        { "kind": "card-type-count", "cardType": "totw", "comparator": "min", "value": 1 }
+      ]
+    },
+    {
+      "id": "player-upgrade-3",
+      "name": "85 Rated Squad",
+      "requirements": [
+        { "kind": "squad-rating", "comparator": "min", "value": 85 },
+        { "kind": "player-count", "value": 11 }
+      ]
+    },
+    {
+      "id": "player-upgrade-4",
+      "name": "86 Rated Squad",
+      "requirements": [
+        { "kind": "squad-rating", "comparator": "min", "value": 86 },
+        { "kind": "player-count", "value": 11 }
+      ]
+    }
+  ],
+  "source": { "kind": "local", "confidence": 1 }
+}
