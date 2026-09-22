@@ -38,31 +38,53 @@ const c = {
   bold: (s) => `\x1b[1m${s}\x1b[0m`,
 }
 
+/**
+ * Run wrangler and return everything it said.
+ *
+ * Both streams, always. execFileSync returns stdout only, so on a successful
+ * run anything wrangler wrote to stderr was being thrown away — which is how
+ * the first version of this script missed the ids it was looking for.
+ */
 function wrangler(argv) {
   try {
-    return execFileSync('npx', ['wrangler', ...argv], {
+    const stdout = execFileSync('npx', ['wrangler', ...argv], {
       encoding: 'utf8',
       stdio: ['inherit', 'pipe', 'pipe'],
     })
+    return stdout ?? ''
   } catch (e) {
-    // wrangler writes the useful part to stdout even when it exits non-zero.
     return `${e.stdout ?? ''}\n${e.stderr ?? ''}`
   }
 }
 
-/** Pull an id out of wrangler's output, whichever shape it used. */
+/** Pull the first JSON array out of wrangler's output, ignoring any preamble. */
+function parseJsonArray(output) {
+  const start = output.indexOf('[')
+  if (start === -1) return null
+  try {
+    const parsed = JSON.parse(output.slice(start, output.lastIndexOf(']') + 1))
+    return Array.isArray(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Pull an id out of wrangler's output for a named key.
+ *
+ * Deliberately has NO "any id-shaped string in the output" fallback. An earlier
+ * version did, and it matched the account id that wrangler prints in its
+ * banner — so all three resources were written with the same wrong value and
+ * the config looked plausible while being entirely wrong. A fallback that can
+ * silently return the wrong answer is worse than no fallback: ids are resolved
+ * by listing the resources instead, which is authoritative.
+ */
 function extractId(output, key) {
-  const toml = output.match(new RegExp(`${key}\\s*=\\s*"([0-9a-fA-F-]{16,})"`))
+  const toml = output.match(new RegExp(`\\b${key}\\s*=\\s*"([0-9a-fA-F-]{16,})"`))
   if (toml) return toml[1]
   const json = output.match(new RegExp(`"${key}"\\s*:\\s*"([0-9a-fA-F-]{16,})"`))
   if (json) return json[1]
-  // Last resort: a bare uuid or 32-hex id anywhere in the output.
-  const bare = output.match(/\b([0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i)
-  return bare ? bare[1] : null
-}
-
-function alreadyExists(output) {
-  return /already exists|duplicate|there is already/i.test(output)
+  return null
 }
 
 console.log(c.bold('\nFC 27 SBC Assistant — Cloudflare setup\n'))
@@ -79,21 +101,19 @@ console.log(`  account: ${c.green(email)}`)
 
 // ─── D1 ──────────────────────────────────────────────────────────────────────
 console.log(c.dim(`\n  creating D1 database "${DB_NAME}"...`))
-let dbOut = wrangler(['d1', 'create', DB_NAME])
-let dbId = extractId(dbOut, 'database_id') ?? extractId(dbOut, 'uuid')
+const dbOut = wrangler(['d1', 'create', DB_NAME])
 
-if (!dbId && alreadyExists(dbOut)) {
-  console.log(c.dim('  already exists — looking it up'))
-  const list = wrangler(['d1', 'list', '--json'])
-  try {
-    const found = JSON.parse(list).find((d) => d.name === DB_NAME)
-    dbId = found?.uuid ?? found?.database_id ?? null
-  } catch { /* fall through to the error below */ }
-}
+// Whether it was just created or already existed, the list is the source of
+// truth. Parsing the create output alone is how the wrong id got written.
+const dbList = parseJsonArray(wrangler(['d1', 'list', '--json']))
+const dbId =
+  dbList?.find((d) => d.name === DB_NAME)?.uuid ??
+  dbList?.find((d) => d.name === DB_NAME)?.database_id ??
+  extractId(dbOut, 'database_id')
 
 if (!dbId) {
   console.error(c.red('\n  Could not create or find the D1 database.'))
-  console.error(c.dim(dbOut.trim()))
+  console.error(c.dim(dbOut.trim().slice(0, 800)))
   process.exit(1)
 }
 console.log(`  D1  ${DB_NAME} → ${c.green(dbId)}`)
@@ -103,21 +123,22 @@ function createKv(preview) {
   const label = preview ? 'preview' : 'production'
   console.log(c.dim(`  creating KV namespace (${label})...`))
   const out = wrangler(['kv', 'namespace', 'create', KV_BINDING, ...(preview ? ['--preview'] : [])])
-  let id = extractId(out, preview ? 'preview_id' : 'id')
 
-  if (!id && alreadyExists(out)) {
-    const list = wrangler(['kv', 'namespace', 'list'])
-    try {
-      const ns = JSON.parse(list.slice(list.indexOf('[')))
-      const wanted = preview
-        ? new RegExp(`${KV_BINDING}_preview$`, 'i')
-        : new RegExp(`${KV_BINDING}$`, 'i')
-      id = ns.find((x) => wanted.test(x.title))?.id ?? null
-    } catch { /* reported below */ }
-  }
+  // Resolved by listing, for the same reason as D1 above. wrangler titles the
+  // namespace "<worker-name>-<binding>", with "_preview" appended for previews.
+  const namespaces = parseJsonArray(wrangler(['kv', 'namespace', 'list'])) ?? []
+  const wanted = preview
+    ? new RegExp(`${KV_BINDING}_preview$`, 'i')
+    : new RegExp(`${KV_BINDING}$`, 'i')
+
+  const id =
+    namespaces.find((x) => typeof x?.title === 'string' && wanted.test(x.title))?.id ??
+    extractId(out, preview ? 'preview_id' : 'id')
+
   if (!id) {
     console.error(c.red(`\n  Could not create or find the ${label} KV namespace.`))
-    console.error(c.dim(out.trim()))
+    console.error(c.dim(out.trim().slice(0, 800)))
+    console.error(c.dim(`  namespaces seen: ${namespaces.map((x) => x?.title).join(', ') || '(none)'}`))
     process.exit(1)
   }
   console.log(`  KV  ${KV_BINDING} (${label}) → ${c.green(id)}`)
@@ -126,6 +147,43 @@ function createKv(preview) {
 
 const kvId = createKv(false)
 const kvPreviewId = createKv(true)
+
+// ─── sanity-check before writing anything ────────────────────────────────────
+/**
+ * Three separate resources must have three separate ids.
+ *
+ * This check exists because an earlier version of this script wrote the same
+ * value into all three slots — it had scraped the account id out of wrangler's
+ * banner — and the resulting config looked entirely plausible. Nothing caught
+ * it until a deploy behaved strangely. Verifying before writing is cheap; a
+ * config that is confidently wrong is not.
+ */
+const resolved = { 'D1 database': dbId, 'KV production': kvId, 'KV preview': kvPreviewId }
+const seen = new Map()
+for (const [label, id] of Object.entries(resolved)) {
+  if (seen.has(id)) {
+    console.error(c.red('\n  Refusing to write: two resources resolved to the same id.'))
+    console.error(`    ${seen.get(id)} and ${label} are both ${id}`)
+    console.error(c.dim('\n  That means an id was misread, not that the resources are wrong.'))
+    console.error(c.dim('  Read the real ids with:'))
+    console.error(c.dim('    npx wrangler d1 list'))
+    console.error(c.dim('    npx wrangler kv namespace list'))
+    console.error(c.dim(`  then fill them into ${CONFIG} by hand.\n`))
+    process.exit(1)
+  }
+  seen.set(id, label)
+}
+
+// A Cloudflare account id is 32 hex characters with no dashes. A D1 database id
+// is a dashed uuid. Seeing the former where the latter belongs is the exact
+// failure above, so it is named rather than left to look like a typo.
+if (/^[0-9a-f]{32}$/i.test(dbId)) {
+  console.error(c.red('\n  The D1 id looks like an account id, not a database id.'))
+  console.error(c.dim(`    got: ${dbId}`))
+  console.error(c.dim('    a D1 id is a dashed uuid, e.g. 1a2b3c4d-5e6f-...'))
+  console.error(c.dim('\n  Check with:  npx wrangler d1 list\n'))
+  process.exit(1)
+}
 
 // ─── write the config ────────────────────────────────────────────────────────
 if (!existsSync(CONFIG)) {
