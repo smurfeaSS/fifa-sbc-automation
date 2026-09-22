@@ -1,0 +1,20 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local club data never belongs in git — it is personal account data.
+# This covers the club export, settings, SBC history and your own SBC
+# definitions. Only the checked-in examples are exempt.
+data/*.json
+data/*.db
+data/cache/
+data/sbcs/
+!data/.gitkeep
+!data/examples/
+!data/examples/**
+
+.env
+.DS_Store
+
+# Generated from export-club.js — regenerate with make-bookmarklet.mjs
+bookmarklet.txt

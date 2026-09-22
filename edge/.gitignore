@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+*.tsbuildinfo
+
+# Local copies of the config with your real resource ids in them. The committed
+# wrangler.toml keeps placeholders, so these would otherwise show up as
+# untracked noise after every `npm run setup`.
+wrangler.toml.backup
+wrangler.toml.mine
+wrangler.toml.local
+
+# Remembers the arguments `npm run setup` was given, so `npm run update`
+# can replay them. Holds your account id and AUD tag — local only.
+.setup-args.json

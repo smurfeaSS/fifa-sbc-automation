@@ -1,0 +1,133 @@
+name = "fc27-sbc-assistant"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# ─── The Access bypass, closed ────────────────────────────────────────────────
+# Cloudflare Access protects a *route on your domain*. It does NOT protect the
+# free `<worker>.<subdomain>.workers.dev` hostname every Worker gets by default.
+# Leaving that enabled means anyone who discovers the URL reaches your club data
+# with no login at all.
+#
+# This disables it. The Worker is then reachable only through the custom domain
+# below, which sits behind Access. The JWT check in src/middleware/access.ts is
+# the second layer — both matter, because a misconfigured Access policy would
+# otherwise be the only thing standing in the way.
+workers_dev = false
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "single-page-application"
+# By default Workers Assets serves a matching static file *before* the Worker
+# script runs, which means the Access check in src/index.ts never executes for
+# the dashboard itself — verified: without this the UI returns 200 to a request
+# carrying no Access token at all.
+#
+# This forces every request through the Worker first, so requireAccess gates the
+# UI as well as the API. The Worker then serves assets explicitly via the
+# ASSETS binding once the identity checks out.
+run_worker_first = true
+
+[vars]
+APP_ENV = "development"
+LOG_LEVEL = "info"
+# ALLOWED_EMAIL is deliberately NOT declared here.
+#
+# Secrets and plain-text vars share one namespace, and `wrangler deploy` uploads
+# whatever vars this file declares — so a var of the same name OVERWRITES the
+# secret on every single deploy. Declaring it here with a placeholder would mean
+# the allowlist silently reverted to nothing each time you shipped.
+#
+# It exists only as a secret:
+#     npx wrangler secret put ALLOWED_EMAIL --env production
+#
+# Until that is set the Worker refuses every request and says so in
+# `wrangler tail`, which is the correct way for an unset allowlist to behave.
+# Your Zero Trust team domain, e.g. "yourteam" for yourteam.cloudflareaccess.com
+ACCESS_TEAM_DOMAIN = "REPLACE_WITH_YOUR_TEAM_NAME"
+# The Access application's AUD tag (Zero Trust > Access > Applications > Overview)
+ACCESS_AUD = "REPLACE_WITH_YOUR_ACCESS_AUD_TAG"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fc27-sbc-assistant-club"
+database_id = "REPLACE_WITH_CLUB_DB_ID"          # run: npm run db:create
+migrations_dir = "migrations"
+
+# Caches the Access public keys (JWKS). Without this every request would fetch
+# them, which burns a subrequest and adds latency to every page load.
+[[kv_namespaces]]
+# Holds the Cloudflare Access signing keys (JWKS). Named for the job rather
+# than "CACHE", so what lives in it is obvious from the binding alone.
+binding = "ACCESS_KEYS"
+id = "REPLACE_WITH_ACCESS_KEYS_ID"               # run: npm run kv:create
+preview_id = "REPLACE_WITH_ACCESS_KEYS_PREVIEW_ID"
+
+# ─── CPU allowance (Workers Paid) ────────────────────────────────────────────
+# The free plan caps CPU at 10ms per request, which is what originally forced
+# the club import and SBC solving to be split across many small requests. On the
+# paid plan the default is 30s; this states it rather than relying on the
+# default, so the budget the solver is tuned against is visible in one place.
+#
+# Wall-clock time waiting on D1, KV or fetch does NOT count against this — only
+# actual JS execution does.
+[limits]
+cpu_ms = 30000
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[dev]
+port = 8787
+local_protocol = "http"
+
+# ─── PRODUCTION ───────────────────────────────────────────────────────────────
+[env.production]
+name = "fc27-sbc-assistant-prod"
+workers_dev = false
+
+# Access protects this hostname. Set up the Access application against exactly
+# this route — see edge/ACCESS-SETUP.md.
+#
+# This MUST stay above [env.production.assets]. TOML assigns every bare key to
+# the table most recently opened, so a `routes` line placed after that header
+# becomes assets.routes — wrangler warns about the unexpected field, deploys a
+# Worker with no custom domain, and Access then has nothing to protect.
+routes = [
+  { pattern = "sbc.REPLACE_WITH_YOUR_DOMAIN", custom_domain = true }
+]
+
+[env.production.assets]
+directory = "./public"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "single-page-application"
+# Same reason as above — without this the production UI is served without ever
+# reaching the Access check.
+run_worker_first = true
+
+[env.production.vars]
+APP_ENV = "production"
+LOG_LEVEL = "warn"
+ACCESS_TEAM_DOMAIN = "REPLACE_WITH_YOUR_TEAM_NAME"
+ACCESS_AUD = "REPLACE_WITH_YOUR_ACCESS_AUD_TAG"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "fc27-sbc-assistant-club"
+database_id = "REPLACE_WITH_CLUB_DB_ID"
+migrations_dir = "migrations"
+
+[[env.production.kv_namespaces]]
+binding = "ACCESS_KEYS"
+id = "REPLACE_WITH_ACCESS_KEYS_ID"
+
+[env.production.limits]
+cpu_ms = 30000
+
+[env.production.observability]
+enabled = true
+head_sampling_rate = 1
