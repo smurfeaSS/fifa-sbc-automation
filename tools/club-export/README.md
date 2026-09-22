@@ -6,9 +6,31 @@ folder and stays on your machine.
 
 ## Usage
 
+**Use a devtools Snippet, not the console.** Pasting 300 lines into a console
+is unreliable — some browsers flatten it to a single line, and then a
+`SyntaxError` about a regular expression flag is the result. Snippets keep the
+file intact and let you re-run it with one click next time.
+
+### Chrome / Edge
+
 1. Log in to the FC Web App as normal, let it finish loading.
-2. Open devtools (F12) → **Console**.
-3. Paste the whole of `export-club.js` and press Enter.
+2. **F12 → Sources → Snippets → New snippet**.
+3. Paste the whole of `export-club.js`, then **Ctrl+Enter** to run.
+
+### Firefox
+
+1. **F12 → Console**.
+2. Press **Ctrl+B** to open the multi-line editor (paste into the console's
+   single-line prompt is what mangles it).
+3. Paste, then **Ctrl+Enter**.
+
+Firefox may also require you to type `allow pasting` once before it accepts a
+paste into devtools at all — a protection against people being talked into
+pasting things they do not understand, which is worth taking seriously in
+general.
+
+### Either way
+
 4. Wait — it deliberately paces itself, so a large club takes a few minutes.
 5. Import the downloaded file:
 
@@ -65,6 +87,11 @@ Common cases:
 | HTTP 401 / 403 | Session expired | Reload the Web App, rerun |
 | HTTP 429 | Rate limited | Wait several minutes. Do not immediately retry |
 | "service layer NOT found" | App internals changed | Harmless — it falls back to direct GETs |
+| `SyntaxError: invalid regular expression flag` | The paste was flattened to one line | Use a Snippet, or Firefox's Ctrl+B editor |
+
+The script is written to survive being flattened — every comment is a `/* */`
+block rather than a `//` line comment, precisely so a mangled paste still
+parses. But a Snippet avoids the question entirely.
 
 The snippet aborts on the first failed request rather than retrying, so a
 failure leaves nothing half-done.

@@ -48,7 +48,7 @@
     probeOnly: false,
   };
 
-  // ---------------------------------------------------------------- logging
+/* ---------------------------------------------------------------- logging */
   const log = (...a) => console.log('%c[SBC Export]', 'color:#4ade80;font-weight:bold', ...a);
   const warn = (...a) => console.warn('%c[SBC Export]', 'color:#fbbf24;font-weight:bold', ...a);
   const err = (...a) => console.error('%c[SBC Export]', 'color:#f87171;font-weight:bold', ...a);
@@ -57,18 +57,18 @@
   const jitter = () =>
     CONFIG.minDelayMs + Math.random() * (CONFIG.maxDelayMs - CONFIG.minDelayMs);
 
-  // ------------------------------------------------------- read-only guard
+/* ------------------------------------------------------- read-only guard */
   /**
    * Only these paths may be requested. This is the single enforcement point
    * for the read-only promise above — if a URL does not match, we throw rather
    * than send it. Kept deliberately tight; widen only with good reason.
    */
   const ALLOWED_PATH_PATTERNS = [
-    /\/ut\/game\/[^/]+\/club(\?|$)/,        // club item pages
-    /\/ut\/game\/[^/]+\/club\/stat\/?(\?|$)/, // club summary counts
-    /\/ut\/game\/[^/]+\/squad\/\d+(\?|$)/,  // a saved squad
-    /\/ut\/game\/[^/]+\/squadlist(\?|$)/,   // list of saved squads
-    /\/ut\/game\/[^/]+\/user\/massinfo(\?|$)/, // account summary (coins, counts)
+    /\/ut\/game\/[^/]+\/club(\?|$)/, /* club item pages */
+    /\/ut\/game\/[^/]+\/club\/stat\/?(\?|$)/, /* club summary counts */
+    /\/ut\/game\/[^/]+\/squad\/\d+(\?|$)/, /* a saved squad */
+    /\/ut\/game\/[^/]+\/squadlist(\?|$)/, /* list of saved squads */
+    /\/ut\/game\/[^/]+\/user\/massinfo(\?|$)/, /* account summary (coins, counts) */
   ];
 
   function assertReadOnly(url, method) {
@@ -82,7 +82,7 @@
     }
   }
 
-  // ------------------------------------------------------------- discovery
+/* ------------------------------------------------------------- discovery */
   /**
    * The Web App is a single-page app whose internals change between versions.
    * Rather than hard-coding one access route, probe for several and report
@@ -97,7 +97,7 @@
       notes: [],
     };
 
-    // Game version, e.g. "fc27" — appears in the API path and often in config.
+/* Game version, e.g. "fc27" — appears in the API path and often in config. */
     if (CONFIG.gameVersion !== 'auto') {
       found.gameVersion = CONFIG.gameVersion;
       found.notes.push(`game version pinned by config: ${CONFIG.gameVersion}`);
@@ -115,8 +115,8 @@
       }
     }
 
-    // The app's own service layer. Preferred route: requests go out through the
-    // app's real code path, so headers and session handling match exactly.
+/* The app's own service layer. Preferred route: requests go out through the */
+/* app's real code path, so headers and session handling match exactly. */
     const svc = window.services || window.UTServices || null;
     if (svc && (svc.Club || svc.Item)) {
       found.serviceLayer = svc;
@@ -125,8 +125,8 @@
       found.notes.push('app service layer NOT found — will fall back to direct GETs');
     }
 
-    // Session id, used by the fallback route. We read it, use it for GETs to
-    // EA's own host, and never store or transmit it.
+/* Session id, used by the fallback route. We read it, use it for GETs to */
+/* EA's own host, and never store or transmit it. */
     const sid =
       window.services?.Authentication?.sessionId ||
       window.gSessionId ||
@@ -141,7 +141,7 @@
       found.notes.push('session id NOT found — direct fallback unavailable');
     }
 
-    // API host. Varies by platform/region; prefer whatever the app is using.
+/* API host. Varies by platform/region; prefer whatever the app is using. */
     found.apiBase =
       window.services?.Config?.utasUrl ||
       window.UTAS_BASE ||
@@ -150,7 +150,7 @@
     return found;
   }
 
-  // ------------------------------------------------------------ fetch path
+/* ------------------------------------------------------------ fetch path */
   async function readJson(env, path) {
     const url = `${env.apiBase}${path}`;
     assertReadOnly(url, 'GET');
@@ -164,8 +164,8 @@
       },
     });
 
-    // Fail closed rather than retry — a retry loop against a rate limit is
-    // exactly the traffic shape we are trying not to produce.
+/* Fail closed rather than retry — a retry loop against a rate limit is */
+/* exactly the traffic shape we are trying not to produce. */
     if (!res.ok) {
       throw new Error(
         `Request failed with HTTP ${res.status}. Aborting.\n` +
@@ -176,7 +176,7 @@
     return res.json();
   }
 
-  // ---------------------------------------------------------- club reading
+/* ---------------------------------------------------------- club reading */
   async function readClubViaServices(env) {
     const Club = env.serviceLayer.Club;
     if (!Club || typeof Club.search !== 'function') return null;
@@ -226,8 +226,8 @@
   }
 
   async function readSquads(env) {
-    // Squads tell us which players are in use, which drives a large part of
-    // the protection engine. Missing squads is not fatal — we warn and go on.
+/* Squads tell us which players are in use, which drives a large part of */
+/* the protection engine. Missing squads is not fatal — we warn and go on. */
     try {
       const path = `/ut/game/${env.gameVersion}/squadlist`;
       const data = await readJson(env, path);
@@ -239,7 +239,7 @@
     }
   }
 
-  // ---------------------------------------------------------------- output
+/* ---------------------------------------------------------------- output */
   function download(obj, filename) {
     const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -252,7 +252,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  // ------------------------------------------------------------------ main
+/* ------------------------------------------------------------------ main */
   try {
     log('Probing the Web App...');
     const env = probe();
