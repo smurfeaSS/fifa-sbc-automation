@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local club data never belongs in git — it is personal account data.
+data/*.json
+data/*.db
+data/cache/
+!data/.gitkeep
+!data/examples/
+
+.env
+.DS_Store
