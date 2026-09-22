@@ -31,7 +31,6 @@ not_found_handling = "single-page-application"
 run_worker_first = true
 
 [vars]
-APP_NAME = "fc27-sbc-assistant"
 APP_ENV = "development"
 LOG_LEVEL = "info"
 # The single address allowed in, enforced in the Worker as well as in the Access
@@ -89,6 +88,17 @@ local_protocol = "http"
 name = "fc27-sbc-assistant-prod"
 workers_dev = false
 
+# Access protects this hostname. Set up the Access application against exactly
+# this route — see edge/ACCESS-SETUP.md.
+#
+# This MUST stay above [env.production.assets]. TOML assigns every bare key to
+# the table most recently opened, so a `routes` line placed after that header
+# becomes assets.routes — wrangler warns about the unexpected field, deploys a
+# Worker with no custom domain, and Access then has nothing to protect.
+routes = [
+  { pattern = "sbc.REPLACE_WITH_YOUR_DOMAIN", custom_domain = true }
+]
+
 [env.production.assets]
 directory = "./public"
 binding = "ASSETS"
@@ -97,12 +107,6 @@ not_found_handling = "single-page-application"
 # Same reason as above — without this the production UI is served without ever
 # reaching the Access check.
 run_worker_first = true
-
-# Access protects this hostname. Set up the Access application against exactly
-# this route — see edge/ACCESS-SETUP.md.
-routes = [
-  { pattern = "sbc.REPLACE_WITH_YOUR_DOMAIN", custom_domain = true }
-]
 
 [env.production.vars]
 APP_ENV = "production"

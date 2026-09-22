@@ -4,7 +4,6 @@ export type Bindings = {
   ACCESS_KEYS: KVNamespace
   ASSETS: Fetcher
 
-  APP_NAME: string
   APP_ENV: string
   LOG_LEVEL: string
 
