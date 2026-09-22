@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FC 27 Smart SBC Assistant</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%2358a6ff'/%3E%3Ctext x='8' y='12' font-size='10' font-family='sans-serif' font-weight='bold' text-anchor='middle' fill='%230d1117'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="layout">
+  <nav>
+    <h1>SBC Assistant</h1>
+    <button data-view="dashboard" class="active">Dashboard</button>
+    <button data-view="club">Club</button>
+    <button data-view="solver">SBC Solver</button>
+    <button data-view="duplicates">Duplicates</button>
+    <button data-view="fodder">Fodder</button>
+    <button data-view="protected">Protected Players</button>
+    <button data-view="history">SBC History</button>
+    <button data-view="settings">Settings</button>
+    <p class="note">
+      Nothing is ever submitted for you. Squads are proposals — you build and
+      submit them yourself.
+    </p>
+  </nav>
+
+  <main>
+    <!-- Dashboard -->
+    <section class="view active" id="view-dashboard">
+      <h2>Dashboard</h2>
+      <p class="sub" id="club-stamp">No club imported yet.</p>
+      <div class="tiles" id="dash-tiles"></div>
+
+      <div class="panel">
+        <h3>Import your club</h3>
+        <p class="muted" style="margin-top:0">
+          Run <span class="mono">tools/club-export/export-club.js</span> in the Web App console,
+          then drop the downloaded file here.
+        </p>
+        <div class="drop" id="drop">Drop <span class="mono">club-export-*.json</span> here, or click to choose</div>
+        <input type="file" id="file" accept="application/json" hidden>
+        <div id="import-result"></div>
+      </div>
+    </section>
+
+    <!-- Club -->
+    <section class="view" id="view-club">
+      <h2>Club</h2>
+      <p class="sub">Search and lock individual players.</p>
+      <div class="filters">
+        <input id="f-name" placeholder="Name contains...">
+        <input id="f-min" type="number" placeholder="Min rating" style="width:110px">
+        <input id="f-max" type="number" placeholder="Max rating" style="width:110px">
+        <select id="f-trade">
+          <option value="">Any tradeability</option>
+          <option value="tradeable">Tradeable</option>
+          <option value="untradeable">Untradeable</option>
+        </select>
+        <select id="f-type">
+          <option value="">Any card type</option>
+          <option>common</option><option>rare</option><option>totw</option>
+          <option>icon</option><option>hero</option><option>promo</option>
+          <option>evolution</option><option>unknown</option>
+        </select>
+        <label class="field" style="margin:0"><input type="checkbox" id="f-dup"><span>Duplicates</span></label>
+        <label class="field" style="margin:0"><input type="checkbox" id="f-unprot"><span>Unprotected</span></label>
+        <button class="ghost" id="f-go">Search</button>
+      </div>
+      <div id="club-table"></div>
+    </section>
+
+    <!-- Solver -->
+    <section class="view" id="view-solver">
+      <h2>SBC Solver</h2>
+      <p class="sub">Solves every challenge in a set together, so cheap high-rated cards are not wasted on the low squads.</p>
+      <div id="sbc-notices"></div>
+      <div class="filters">
+        <select id="sbc-select" style="min-width:280px"></select>
+        <button class="action" id="solve-go">Optimize using my club</button>
+        <span class="muted" id="solve-status"></span>
+      </div>
+      <div id="solve-result"></div>
+    </section>
+
+    <!-- Duplicates -->
+    <section class="view" id="view-duplicates">
+      <h2>Duplicates</h2>
+      <p class="sub">Spare copies only — one of each card is always held back.</p>
+      <div id="dup-table"></div>
+    </section>
+
+    <!-- Fodder -->
+    <section class="view" id="view-fodder">
+      <h2>Fodder</h2>
+      <p class="sub">What you have available, by rating.</p>
+      <div id="fodder-table"></div>
+    </section>
+
+    <!-- Protected -->
+    <section class="view" id="view-protected">
+      <h2>Protected Players</h2>
+      <p class="sub">Never used by the solver. Each row says why.</p>
+      <div id="prot-table"></div>
+    </section>
+
+    <!-- History -->
+    <section class="view" id="view-history">
+      <h2>SBC History</h2>
+      <p class="sub">What you recorded as submitted.</p>
+      <div id="hist-table"></div>
+    </section>
+
+    <!-- Settings -->
+    <section class="view" id="view-settings">
+      <h2>Settings</h2>
+      <p class="sub">Protection rules decide what the solver may never touch.</p>
+      <div class="panel">
+        <h3>Protection</h3>
+        <label class="field"><span>Strict protection — refuse to solve rather than use a protected card</span>
+          <input type="checkbox" id="s-strict"></label>
+        <label class="field"><span>Protect tradeable cards worth more than</span>
+          <input type="number" id="s-value" step="500"></label>
+        <label class="field"><span>Protect promo cards worth more than</span>
+          <input type="number" id="s-promo" step="500"></label>
+        <label class="field"><span>Protect active squad</span><input type="checkbox" id="s-active"></label>
+        <label class="field"><span>Protect all saved squads</span><input type="checkbox" id="s-squads"></label>
+        <label class="field"><span>Protect Evolutions</span><input type="checkbox" id="s-evo"></label>
+        <label class="field"><span>Protect Icons</span><input type="checkbox" id="s-icons"></label>
+        <label class="field"><span>Protect Heroes</span><input type="checkbox" id="s-heroes"></label>
+        <label class="field"><span>Protect promo cards</span><input type="checkbox" id="s-promos"></label>
+        <label class="field"><span>Protect favourites</span><input type="checkbox" id="s-fav"></label>
+        <label class="field"><span>Protect cards you only own one of</span><input type="checkbox" id="s-single"></label>
+        <label class="field"><span>Protect everything rated at or above (0 = off)</span>
+          <input type="number" id="s-rating"></label>
+      </div>
+      <div class="panel">
+        <h3>Solver</h3>
+        <label class="field"><span>Mode</span>
+          <select id="s-mode">
+            <option value="balanced">Balanced</option>
+            <option value="maximum-savings">Maximum savings</option>
+            <option value="duplicate-cleanup">Duplicate cleanup</option>
+            <option value="untradeables-only">Untradeables only</option>
+            <option value="rating-efficient">Rating efficient</option>
+          </select></label>
+        <label class="field"><span>Search budget per squad (ms)</span>
+          <input type="number" id="s-budget" step="500"></label>
+      </div>
+      <div class="panel">
+        <h3>SBC source</h3>
+        <label class="field"><span>Fetch SBCs from a community site</span><input type="checkbox" id="s-scrape"></label>
+        <label class="field"><span>Base URL</span><input type="text" id="s-url" style="width:280px"></label>
+        <label class="field"><span>Cache for (minutes)</span><input type="number" id="s-ttl"></label>
+        <p class="muted" style="font-size:12px">
+          Scraping is against most sites' terms of service and breaks when their markup
+          changes. Requirements it cannot read are kept as unparsed and flagged rather
+          than guessed.
+        </p>
+      </div>
+      <button class="action" id="s-save">Save settings</button>
+      <span class="muted" id="s-saved"></span>
+    </section>
+  </main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

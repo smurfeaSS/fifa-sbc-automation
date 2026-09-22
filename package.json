@@ -4,13 +4,15 @@
   "private": true,
   "description": "Local SBC optimizer for EA Sports FC 27 Ultimate Team. Analyses an imported club, solves SBC requirements around player protection rules, and proposes squads for manual completion.",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
     "dev": "tsc -p tsconfig.json --watch",
     "start": "node dist/dashboard/server.js",
     "cli": "node dist/cli.js",
-    "test": "node --test dist/tests/",
+    "test": "npm run build && node --test dist/tests/*.test.js",
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
