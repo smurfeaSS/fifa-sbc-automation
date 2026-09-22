@@ -1,7 +1,10 @@
 # FC 27 Smart SBC Assistant — Cloudflare edition
 
-The SBC solver as a private web app on Cloudflare Workers, reachable only by
-**mariosxen7@icloud.com** through Cloudflare Access.
+The SBC solver as a private web app on Cloudflare Workers, reachable only by a
+single address you nominate, through Cloudflare Access.
+
+That address is set as a Worker secret (`wrangler secret put ALLOWED_EMAIL`),
+not committed — see [DEPLOY.md](DEPLOY.md).
 
 Built to the conventions and constraints in the `cloudflare-edge` repo: Hono,
 D1 via Drizzle, KV, Workers Assets.

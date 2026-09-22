@@ -1,6 +1,6 @@
 # Cloudflare Access setup
 
-This deployment is locked to a single address: **mariosxen7@icloud.com**.
+This deployment is locked to a single address: **your address**.
 
 Getting that right takes two independent pieces. Both matter, and the most
 common way these deployments end up publicly readable is doing only the first.
@@ -51,7 +51,7 @@ Add one policy:
 | Action | **Allow** |
 | Rule type | Include |
 | Selector | **Emails** |
-| Value | `mariosxen7@icloud.com` |
+| Value | `your@email.com` |
 
 Use **Emails**, not *Emails ending in* and not *Everyone*. One address, exactly.
 

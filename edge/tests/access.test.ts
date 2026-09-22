@@ -13,7 +13,7 @@ import type { Bindings } from '../src/types'
 const TEAM = 'testteam'
 const ISSUER = `https://${TEAM}.cloudflareaccess.com`
 const AUD = 'a'.repeat(64)
-const EMAIL = 'mariosxen7@icloud.com'
+const EMAIL = 'allowed@example.com'
 
 let keyPair: CryptoKeyPair
 let jwk: JsonWebKey

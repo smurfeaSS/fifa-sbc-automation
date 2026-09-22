@@ -265,11 +265,20 @@ export const requireAccess = createMiddleware<AppEnv>(async (c, next) => {
     )
   }
 
-  const allowed = c.env.ALLOWED_EMAIL?.trim().toLowerCase()
+  const configured = c.env.ALLOWED_EMAIL?.trim()
+  // An unreplaced placeholder is not a configuration — comparing real
+  // identities against the literal string would refuse everyone anyway, but
+  // silently and without saying why.
+  const allowed = !configured || configured.startsWith('REPLACE_WITH')
+    ? null
+    : configured.toLowerCase()
   const actual = claims.email?.trim().toLowerCase()
 
   if (!allowed) {
-    console.error('[access] ALLOWED_EMAIL is not configured — refusing all requests')
+    console.error(
+      '[access] ALLOWED_EMAIL is not set — refusing all requests. Fix with: ' +
+      'npx wrangler secret put ALLOWED_EMAIL --env production',
+    )
     return c.json(
       { success: false, error: 'Forbidden', code: 'MISCONFIGURED', requestId: c.get('requestId') ?? 'unknown' },
       403,

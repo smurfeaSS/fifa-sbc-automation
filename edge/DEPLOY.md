@@ -136,6 +136,24 @@ The domain must already be on your Cloudflare account — Access can only protec
 hostnames Cloudflare has DNS for. `custom_domain = true` makes wrangler create
 the DNS record for you on deploy.
 
+## 4b. Set the allowed email as a secret
+
+```bash
+npx wrangler secret put ALLOWED_EMAIL --env production
+```
+
+It prompts; paste your address and press Enter. It is not echoed and never
+touches the repo.
+
+This is a secret rather than a var in `wrangler.toml` because the repo is in
+version control — a personal address does not belong in a committed file.
+Workers resolve secrets and vars through the same `env` binding and a secret of
+the same name wins, so nothing in the code changes.
+
+Until it is set, the Worker refuses every request and says so in
+`wrangler tail`. That is deliberate: an unset allowlist must fail closed, never
+open.
+
 ## 5. First deploy
 
 ```bash
@@ -159,7 +177,7 @@ fail-closed behaviour, and it is why deploying before configuring Access is safe
 
 Follow **[ACCESS-SETUP.md](ACCESS-SETUP.md)** from step 4 onward. In short:
 create a self-hosted Access application on `sbc.yourdomain.com`, add one Allow
-policy with the **Emails** selector set to `mariosxen7@icloud.com`, enable
+policy with the **Emails** selector set to `your@email.com`, enable
 One-time PIN as the login method, then copy the AUD tag.
 
 Put the AUD tag and your team name into **both** `[vars]` blocks in
@@ -168,7 +186,7 @@ Put the AUD tag and your team name into **both** `[vars]` blocks in
 ```toml
 ACCESS_TEAM_DOMAIN = "yourteam"
 ACCESS_AUD = "the-64-character-aud-tag"
-ALLOWED_EMAIL = "mariosxen7@icloud.com"
+ALLOWED_EMAIL = "your@email.com"
 ```
 
 ## 7. Deploy again, then verify it is actually locked

@@ -34,9 +34,17 @@ run_worker_first = true
 APP_NAME = "fc27-sbc-assistant"
 APP_ENV = "development"
 LOG_LEVEL = "info"
-# The single address allowed in. Enforced in the Worker as well as in the Access
+# The single address allowed in, enforced in the Worker as well as in the Access
 # policy, so a policy edit alone cannot open this up.
-ALLOWED_EMAIL = "mariosxen7@icloud.com"
+#
+# Set as a SECRET, not here — this file is in version control, and a personal
+# address does not belong in it:
+#     npx wrangler secret put ALLOWED_EMAIL --env production
+#
+# Workers resolve secrets and vars through the same env binding, and a secret of
+# the same name wins, so no code changes. The placeholder below is treated as
+# unconfigured and makes the Worker refuse every request until the secret is set.
+ALLOWED_EMAIL = "REPLACE_WITH_YOUR_EMAIL"
 # Your Zero Trust team domain, e.g. "yourteam" for yourteam.cloudflareaccess.com
 ACCESS_TEAM_DOMAIN = "REPLACE_WITH_YOUR_TEAM_NAME"
 # The Access application's AUD tag (Zero Trust > Access > Applications > Overview)
@@ -99,7 +107,7 @@ routes = [
 [env.production.vars]
 APP_ENV = "production"
 LOG_LEVEL = "warn"
-ALLOWED_EMAIL = "mariosxen7@icloud.com"
+ALLOWED_EMAIL = "REPLACE_WITH_YOUR_EMAIL"
 ACCESS_TEAM_DOMAIN = "REPLACE_WITH_YOUR_TEAM_NAME"
 ACCESS_AUD = "REPLACE_WITH_YOUR_ACCESS_AUD_TAG"
 
