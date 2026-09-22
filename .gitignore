@@ -15,3 +15,6 @@ data/sbcs/
 
 .env
 .DS_Store
+
+# Generated from export-club.js — regenerate with make-bookmarklet.mjs
+bookmarklet.txt

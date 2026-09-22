@@ -12,7 +12,7 @@
  *   2. Open devtools (F12) -> Console.
  *   3. Paste this whole file, press Enter.
  *   4. Wait. It reports progress and downloads `club-export-<date>.json`.
- *   5. Import with:  npm run cli -- import ./club-export-<date>.json
+ *   5. Import it: open your assistant and drop the file on the Dashboard.
  *
  * SAFETY PROPERTIES (see automation.md §22, §23)
  *   - READ-ONLY. Every request is a GET, and an allowlist below rejects any
@@ -48,10 +48,86 @@
     probeOnly: false,
   };
 
-/* ---------------------------------------------------------------- logging */
-  const log = (...a) => console.log('%c[SBC Export]', 'color:#4ade80;font-weight:bold', ...a);
-  const warn = (...a) => console.warn('%c[SBC Export]', 'color:#fbbf24;font-weight:bold', ...a);
-  const err = (...a) => console.error('%c[SBC Export]', 'color:#f87171;font-weight:bold', ...a);
+/* ---------------------------------------------------------------- logging
+   *
+   * Reported twice: to the console, and to a panel drawn on the page.
+   *
+   * The panel is not decoration. The FC Web App's bundle carries anti-debugging
+   * traps — recursive `debugger` statements and a `while(!![]){}` freeze loop —
+   * which make DevTools impractical to keep open, and run as a bookmarklet
+   * there is no console to watch at all. Progress has to be visible on the page
+   * itself or the export is a black box.
+   */
+  const ui = (() => {
+    let box = null;
+    let body = null;
+
+    const ensure = () => {
+      if (box) return;
+      box = document.createElement('div');
+      box.style.cssText = [
+        'position:fixed', 'top:12px', 'right:12px', 'z-index:2147483647',
+        'width:340px', 'max-height:70vh', 'overflow:auto',
+        'background:#0d1117', 'color:#e6edf3', 'border:1px solid #30363d',
+        'border-radius:8px', 'box-shadow:0 8px 24px rgba(0,0,0,.5)',
+        'font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace',
+        'padding:10px 12px',
+      ].join(';');
+
+      const head = document.createElement('div');
+      head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px';
+      const title = document.createElement('strong');
+      title.textContent = 'SBC Club Export';
+      title.style.cssText = 'color:#58a6ff;font-size:12px';
+      const close = document.createElement('button');
+      close.textContent = '\u00d7';
+      close.style.cssText = 'background:none;border:0;color:#8b949e;font-size:18px;cursor:pointer;line-height:1';
+      close.onclick = () => box.remove();
+      head.appendChild(title);
+      head.appendChild(close);
+
+      body = document.createElement('div');
+      box.appendChild(head);
+      box.appendChild(body);
+      document.body.appendChild(box);
+    };
+
+    return {
+      line(text, colour) {
+        ensure();
+        const row = document.createElement('div');
+        row.textContent = text;
+        if (colour) row.style.color = colour;
+        body.appendChild(row);
+        body.scrollTop = body.scrollHeight;
+      },
+      /* Page counts rewrite one row rather than stacking up twenty. */
+      progress(text) {
+        ensure();
+        const last = body.lastChild;
+        if (!last || last.getAttribute('data-progress') !== '1') {
+          const row = document.createElement('div');
+          row.setAttribute('data-progress', '1');
+          body.appendChild(row);
+        }
+        body.lastChild.textContent = text;
+        body.scrollTop = body.scrollHeight;
+      },
+    };
+  })();
+
+  const log = (...a) => {
+    console.log('%c[SBC Export]', 'color:#4ade80;font-weight:bold', ...a);
+    ui.line(a.join(' '));
+  };
+  const warn = (...a) => {
+    console.warn('%c[SBC Export]', 'color:#fbbf24;font-weight:bold', ...a);
+    ui.line(a.join(' '), '#d29922');
+  };
+  const err = (...a) => {
+    console.error('%c[SBC Export]', 'color:#f87171;font-weight:bold', ...a);
+    ui.line(a.join(' '), '#f85149');
+  };
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const jitter = () =>
@@ -193,7 +269,8 @@
       });
       const batch = res?.items || res?.response?.itemData || [];
       items.push(...batch);
-      log(`read ${items.length} items (page ${page + 1})`);
+      ui.progress(`read ${items.length} items (page ${page + 1})`);
+      console.log(`[SBC Export] read ${items.length} items (page ${page + 1})`);
       if (batch.length < CONFIG.pageSize) break;
       await sleep(jitter());
     }
@@ -218,7 +295,8 @@
       const data = await readJson(env, path);
       const batch = data?.itemData || data?.items || [];
       items.push(...batch);
-      log(`read ${items.length} items (page ${page + 1})`);
+      ui.progress(`read ${items.length} items (page ${page + 1})`);
+      console.log(`[SBC Export] read ${items.length} items (page ${page + 1})`);
       if (batch.length < CONFIG.pageSize) break;
       await sleep(jitter());
     }
@@ -307,7 +385,7 @@
     download(payload, filename);
 
     log(`Done. ${rawItems.length} items, ${rawSquads.length} squads -> ${filename}`);
-    log(`Next:  npm run cli -- import ./${filename}`);
+    log('Next: open your assistant and drop the file on the Dashboard.');
   } catch (e) {
     err(e.message || e);
     err('Nothing was written to your account. Safe to retry later.');

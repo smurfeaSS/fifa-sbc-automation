@@ -6,10 +6,32 @@ folder and stays on your machine.
 
 ## Usage
 
-**Use a devtools Snippet, not the console.** Pasting 300 lines into a console
-is unreliable — some browsers flatten it to a single line, and then a
-`SyntaxError` about a regular expression flag is the result. Snippets keep the
-file intact and let you re-run it with one click next time.
+### Bookmarklet (recommended)
+
+The FC Web App's bundle contains anti-debugging traps — recursive `debugger`
+statements and a `while(!![]){}` freeze loop — that fire whenever DevTools is
+open. They make the Snippets route below impractical: you can defuse them with
+"Never pause here", but the code recurses and lands somewhere new.
+
+A bookmarklet runs from the bookmarks bar without DevTools, so nothing
+triggers. The script draws its own progress panel on the page, which is what
+you would otherwise be reading in the console.
+
+```bash
+node tools/club-export/make-bookmarklet.mjs
+```
+
+Then: show the bookmarks bar (**Ctrl+Shift+B**), right-click it, **Add page**,
+name it `Export FUT Club`, and paste the whole of `bookmarklet.txt` as the URL.
+
+Open the Web App, wait for it to load, click the bookmark.
+
+### DevTools Snippet
+
+Works if the anti-debugging traps leave you alone. **Use a Snippet, not the
+console** — pasting 300 lines into a console prompt is unreliable, some
+browsers flatten it to a single line, and a `SyntaxError` about a regular
+expression flag is the result.
 
 ### Chrome / Edge
 
